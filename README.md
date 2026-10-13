@@ -119,27 +119,27 @@ python tools/build_assets.py       # 文字环 → ring.svg + tools/og.html
 
 ## 4. 百度统计
 
-已经接好了，用的**和你 `Thomas455.github.io` 同一个站点 ID**：
+已经接好了，用的是**百度统计给本站单独开的站点 ID**（和 `Thomas455.github.io` 是两个独立站点，数据不混）：
 
 ```
-b27042a7b1bc987eb347a45797bd2c1f
+c6a7e5d19abc2b50696c43f0cbf78d4b
 ```
 
-数据会汇总进同一个百度统计后台，在「实时访客」里能直接看到。
+在百度统计后台选这个站点，就能看到独立的报告。
 
 ### 代码在哪
 
-在 `<head>` 里（不是页尾）—— 这点很关键，原因见下。用的是百度官方的那段 loader，但做了三点改动：
+在 `<head>` 里（不是页尾）—— 这点很关键，原因见下。用的是百度官方的那段 loader，只加了两处：
 
 ```html
 <link rel="dns-prefetch" href="//hm.baidu.com">
 <link rel="preconnect" href="https://hm.baidu.com" crossorigin>
 <script>
-  window._hmt = window._hmt || [];
+  var _hmt = window._hmt = window._hmt || [];
   window.__analytics = { ready: false, failed: false, start: Date.now() };
   (function () {
     var hm = document.createElement('script');
-    hm.src = 'https://hm.baidu.com/hm.js?b27042a7b1bc987eb347a45797bd2c1f';
+    hm.src = 'https://hm.baidu.com/hm.js?c6a7e5d19abc2b50696c43f0cbf78d4b';
     hm.async = true;
     hm.onload  = function () { window.__analytics.ready  = true; };
     hm.onerror = function () { window.__analytics.failed = true; };
@@ -187,10 +187,54 @@ const BUDGET = 1200;   // 保证「打开到跳转」至少经过 1200ms
 2. 去百度统计后台 → **实时访客**，几秒内应该能看到这次访问；
 3. 手机流量下再试一次，能区分统计的是不是只有你自己的网络。
 
+### 中文域名怎么填？（百度统计的域名框只收英文/数字）
+
+**直接在域名框里填 punycode 形式就行，这就是中文域名本身，不是替代品：**
+
+```
+xn--psszg58cydsdq780c.com
+```
+
+`宇宙奶龙大学.com` 和 `xn--psszg58cydsdq780c.com` 是**同一个域名的两种写法** ——
+就像 `中` 在 URL 里写成 `%E4%B8%AD` 一样，punycode 只是非 ASCII 域名的 ASCII 表示法。
+
+浏览器从底层就只认 punycode：按 WHATWG URL 规范，`location.hostname` 返回的永远是转换后的形式。
+实测（Node 与浏览器同一套 URL 实现）：
+
+```
+new URL('https://宇宙奶龙大学.com/').hostname    →  'xn--psszg58cydsdq780c.com'
+new URL('https://www.宇宙奶龙大学.com/').hostname →  'www.xn--psszg58cydsdq780c.com'
+```
+
+所以百度统计那个框**只收 ASCII 并不是限制** —— 它要的就是真实域名，只不过真实域名在 DNS
+和浏览器里本来就是 `xn--` 开头这串。
+
+> 想验证就用 Python 自己转（IDNA 编码，和浏览器完全一致）：
+> ```python
+> >>> '宇宙奶龙大学.com'.encode('idna').decode()
+> 'xn--psszg58cydsdq780c.com'
+> ```
+> 反过来也能还原：`'xn--psszg58cydsdq780c.com'.encode().decode('idna')` → `宇宙奶龙大学.com`
+>
+> ⚠️ 别用 `'宇宙奶龙大学.com'.encode('punycode')` —— 那是「纯 punycode 算法」，会把整个字符串
+> 连 `.com` 一起编码成 `.com-fw6gxp65iqhwf5670e`，不是域名。要用 **idna**。
+
+### 站点 ID 换过了
+
+一开始图省事复用了 `Thomas455.github.io` 的 ID，后来换成了百度统计给本站单独开的站点：
+
+| | 站点 ID |
+| --- | --- |
+| 现在用（本站专用） | `c6a7e5d19abc2b50696c43f0cbf78d4b` |
+| 旧（博客那个，已不用） | `b27042a7b1bc987eb347a45797bd2c1f` |
+
+两者数据互相独立。要改回合并统计，把 `index.html` 里 `hm.src` 的问号后面换成对应 ID 即可
+（`?stay` 演示模式也能看到统计，方便验证）。
+
 ### 注意事项
 
 * **广告拦截插件会挡 `hm.baidu.com`**，被挡的访问统计不到，这是所有前端统计的通病，不用管；
-* 百度统计对**中文域名和 GitHub Pages / Cloudflare Pages 都正常**，不用额外配置；
+* GitHub Pages / Cloudflare Pages 上都不用额外配置，统计脚本照常工作；
 * 统计脚本是 `async` 的，**不影响页面渲染和动画**，最坏情况就是不统计。
 
 ## 5. 部署：GitHub Pages 或 Cloudflare Pages（都不用买服务器）

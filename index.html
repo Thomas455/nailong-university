@@ -16,18 +16,20 @@
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/png" sizes="512x512" href="favicon.png">
 <link rel="apple-touch-icon" href="favicon.png">
-<!-- 百度统计：本页 3 秒后就跳走了，脚本必须最早开始加载，晚了这次访问就统计不到。
-     preconnect 省掉 DNS + TLS 的往返；下面的 loader 是官方写法（内联，省一次请求）。
-     站点 ID 与 Thomas455.github.io 用的是同一个，数据会汇总在同一个后台。 -->
+<!-- 百度统计（本站专用站点 ID，与 Thomas455.github.io 是分开的两个站点）。
+     本页 3 秒后就跳走了，脚本必须最早开始加载，晚了这次访问就统计不到；
+     preconnect 省掉 DNS + TLS 的往返。loader 是官方写法，只加了两处：
+       · async        —— 不阻塞首屏
+       · onload/onerror —— 记状态给页面底部的 redirect() 用（跳转前好判断要不要等它）
+     站点 ID 在下面 hm.src 的 ? 后面。 -->
 <link rel="dns-prefetch" href="//hm.baidu.com">
 <link rel="preconnect" href="https://hm.baidu.com" crossorigin>
 <script>
-  window._hmt = window._hmt || [];
-  // 记一下统计脚本的状态，跳转前好判断要不要等它（见页面底部 analyticsGrace）
+  var _hmt = window._hmt = window._hmt || [];
   window.__analytics = { ready: false, failed: false, start: Date.now() };
   (function () {
     var hm = document.createElement('script');
-    hm.src = 'https://hm.baidu.com/hm.js?b27042a7b1bc987eb347a45797bd2c1f';
+    hm.src = 'https://hm.baidu.com/hm.js?c6a7e5d19abc2b50696c43f0cbf78d4b';
     hm.async = true;
     hm.onload = function () { window.__analytics.ready = true; };   // 加载完就会自动上报
     hm.onerror = function () { window.__analytics.failed = true; }; // 多半是被广告拦截插件挡了
