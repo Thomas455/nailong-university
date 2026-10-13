@@ -6,8 +6,10 @@
 **推荐 [Cloudflare Pages](#方案-acloudflare-pages推荐但要迁-ns) 或 [GitHub Pages](#方案-bgithub-pages不用动-ns最省事)，两个都不需要买服务器、也不需要 ICP 备案。**
 
 ```
-index.html                  页面 + 动画 + 跳转逻辑 + 百度统计（CSS/JS 全部内联）
-ring.svg                    校徽外圈：旋转的「宇宙奶龙大学·」文字环（矢量，3.5KB）
+index.html                  部署用的页面（由 tools/index.template.html 构建生成，别直接改）
+tools/index.template.html   页面源文件 ← 要改文案/样式改这个
+tools/build_inline.py       构建：把 ring.svg 内联进 index.html
+ring.svg                    校徽外圈：旋转的「宇宙奶龙大学·」文字环（构建时会内联，不单独请求）
 core.webp / core.png        校徽中心：奶龙（站在文字环底下，所以只有上半身露出来）
 favicon.ico                 浏览器页签图标（16/32/48）
 favicon.png                 iOS / 安卓主屏图标（512×512）
@@ -19,10 +21,12 @@ tools/build_assets.py       文字环 ring.svg + 分享卡片 tools/og.html
 tools/preview-core.png      抠图效果的白底预览
 ```
 
-从零重建全部资源：
+从零重建全部资源（三步，顺序别换）：
 
 ```powershell
-python tools/prepare_nailong.py && python tools/build_assets.py
+python tools/prepare_nailong.py    # 抠图 → core.* / favicon.*
+python tools/build_assets.py       # 文字环 → ring.svg
+python tools/build_inline.py       # 内联 → index.html
 ```
 
 本地已经是一个初始化好的 git 仓库（分支 `main`，首次提交已完成），推送即可发布：
@@ -31,6 +35,90 @@ python tools/prepare_nailong.py && python tools/build_assets.py
 git remote add origin https://github.com/<你的用户名>/nailong-university.git
 git push -u origin main
 ```
+
+---
+
+## 0. 性能优化：为什么首屏只有 2 个请求
+
+这个站部署在境外，**瓶颈是延迟不是带宽**（整页才 35KB）。同机实测：
+
+| 目标 | 建连 | 首字节 |
+| --- | --- | --- |
+| GitHub Pages（本站） | 0.25 ~ 0.46s | **0.49 ~ 0.72s** |
+| 广州大学 / 百度（国内站点） | 0.02 ~ 0.13s | 0.03 ~ 0.13s |
+
+一个 RTT 约 0.25 秒，而 **GitHub Pages 只跑 HTTP/1.1**（实测 `HTTP版本=1.1`），
+没有多路复用 —— 所以**每个资源都要单独付一次往返**。少一个请求就是少 0.25 秒。
+
+### 做了什么：把 ring.svg 内联进 HTML
+
+| | 优化前 | 优化后 |
+| --- | --- | --- |
+| 首屏请求数 | 3（html + core.webp + ring.svg） | **2**（html + core.webp） |
+| 首屏传输量 | 23,016 B | 23,960 B（**+944 B**） |
+
+**只多 944 字节，就省掉一整个往返。** 因为 SVG 是纯文本（3,584 B），
+gzip 后仅 519 B，内联进同一个文件几乎不增体积。
+
+### 为什么没内联奶龙图（这条是踩坑记录）
+
+一开始我以为「base64 的膨胀会被 gzip 抵消」，**实测证明是错的**：
+
+```
+core.webp 原始      15,584  →  单独 gzip 15,150
+core.webp base64    20,780  →  混进 HTML 后 gzip 15,251   ← 只省 7%
+```
+
+已经压缩过的 WebP，base64 之后 gzip 几乎压不动。内联它会把 HTML 从 23KB
+撑到 **46KB** —— 多传 15KB 只换一次往返，在 0.25s RTT 上不划算（多传 15KB 约 0.05s）。
+所以它继续用独立文件 + `<link rel=preload>` 提前加载。
+
+同理没内联 `favicon.ico`：5,727 B 的二进制，base64 后混在 HTML 里 gzip 仍有
+5,780 B，**比它本身还大**。
+
+### 顺手修掉的一个浪费
+
+原来 head 里有这么两行：
+
+```html
+<link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/png" sizes="512x512" href="favicon.png">   ← 删了
+```
+
+第二行会让浏览器**可能去下那张 512×512 的 PNG（93KB！）** 当页签图标。
+现在只保留 `.ico`（内含 16/32/48 三档），`favicon.png` 只留给
+`apple-touch-icon`（仅在「添加到主屏幕」时才拉）。
+
+### 构建与自检
+
+`index.html` 是**生成产物**，改页面要改 `tools/index.template.html` 再重跑：
+
+```powershell
+python tools/build_inline.py
+```
+
+脚本会自检并在出问题时以非零码退出：
+
+* 模板里有未登记的占位符 → 报错
+* 内联的 svg 缺 `class="ring"`（会导致定位和旋转动画失效）→ 报错
+* 首屏资源引用与预期不符 → 报错
+* 输出裸大小 / gzip 后大小（线上真实传输量）
+
+> 自检里也踩过两个坑，都修了：先剥掉 HTML 注释再找标签（否则注释里举例写的
+> `<link>` 会被当成真引用）；按整个标签判断 `rel`（原来用「前文 80 字符里有没有
+> apple-touch-icon」这种启发式，会把 `favicon.ico` 误判成延迟加载）。
+
+### 还想更快的话
+
+内联已经把这个站能榨的都榨了，再快就得**换托管**（实测数据）：
+
+| 方案 | 首字节 | 代价 |
+| --- | --- | --- |
+| Vercel | 0.11s | 免费、加 CNAME 即可、不用迁 NS |
+| Cloudflare | 0.13s | 免费、要迁 NS |
+| Netlify | 0.16s | 免费、不用迁 NS |
+| GitHub Pages | 0.49s | 现状 |
+| COS / EdgeOne 大陆节点 | 0.03s | **要 ICP 备案** |
 
 ---
 
@@ -343,6 +431,7 @@ server {
   location / { try_files $uri $uri/ /index.html; }   # 访问不存在的路径也回这一页
 
   location = /index.html { add_header Cache-Control "no-cache"; }   # 改文案要能立刻生效
+  # ring.svg 已经被内联进 index.html，这里留着是为了兼容旧缓存/直接访问
   location ~* \.(svg|png|webp|ico)$ { expires 7d; add_header Cache-Control "public"; }
 }
 ```
@@ -370,11 +459,19 @@ DNSPod 给 `@` 和 `www` 各加一条 **A 记录**指向服务器公网 IP。
 
 ## 7. 改了东西怎么重新发布
 
+**改页面内容**（文案、样式、跳转目标）：改 `tools/index.template.html`，然后
+
 ```powershell
+python tools/build_inline.py     # 重新生成 index.html
 git add -A
 git commit -m "改了 xxx"
 git push
 ```
+
+**只改图片**（换奶龙、换配色）：跑对应的生成脚本，再跑一次构建，然后提交。
+
+⚠️ **别直接改 `index.html`** —— 它是构建产物，下次跑 `build_inline.py` 会被覆盖。
+（`git diff` 里看到 `index.html` 有很大改动时，先确认是不是构建产生的。）
 
 GitHub Pages 和 Cloudflare Pages 都会在推上去之后自动重新发布，一般 1 分钟内生效。
 

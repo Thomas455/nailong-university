@@ -1,0 +1,363 @@
+<!doctype html>
+<!-- ============================================================================
+     这是【模板 / 源文件】，不是部署用的页面。
+     部署用的是同目录下的 index.html，它由下面这条命令生成：
+
+         python tools/build_inline.py
+
+     构建只做一件事：把 ring.svg 内联成 <svg>（占位符 {{RING_SVG}}）。
+
+     为什么只内联 ring.svg，不内联奶龙图
+     ------------------------------------
+     GitHub Pages 只有 HTTP/1.1（没有多路复用），每个资源都要单独一次往返，
+     而这个站部署在境外、实测一个 RTT 约 0.25 秒。所以「少一个请求」很值钱。
+
+     · ring.svg 是纯文本，3,584 字节 gzip 后只有 519 字节 —— 内联进 HTML
+       几乎不增加传输量，却省掉一整个请求。稳赚。
+     · core.webp 已经压缩过，base64 之后 gzip 压不动（实测 20,780 → 15,251），
+       内联会把 HTML 从 23KB 撑到 46KB。多传 15KB 只换一次往返，不划算，
+       所以它保持独立文件 + preload 提前加载。
+
+     ⚠️ 改页面请改这个文件，然后重跑构建；直接改 index.html 会在下次构建时被覆盖。
+     ============================================================================ -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>宇宙奶龙大学</title>
+<meta name="description" content="奶龙正在护送你前往宇宙奶龙大学。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="宇宙奶龙大学">
+<meta property="og:description" content="奶龙正在护送你前往宇宙奶龙大学">
+<!-- 分享卡片图片必须是绝对地址；换域名时改这一行（og.png 是独立文件，只有爬虫会拉，不占首屏） -->
+<meta property="og:image" content="https://xn--psszg58cydsdq780c.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<!-- 页签图标只声明 favicon.ico（5.7KB，内含 16/32/48 三档）。
+     不要再加一句 <link rel="icon" sizes="512x512" href="favicon.png">
+     —— 浏览器可能就此去下那张 512×512 的 PNG（93KB！）当页签图标，纯浪费。
+     favicon.png 只留给 apple-touch-icon（「添加到主屏幕」时才拉）。 -->
+<link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="apple-touch-icon" href="favicon.png">
+<!-- 百度统计（本站专用站点 ID，与 Thomas455.github.io 是分开的两个站点）。
+     本页 3 秒后就跳走了，脚本必须最早开始加载，晚了这次访问就统计不到；
+     preconnect 省掉 DNS + TLS 的往返。loader 是官方写法，只加了两处：
+       · async        —— 不阻塞首屏
+       · onload/onerror —— 记状态给页面底部的 redirect() 用（跳转前好判断要不要等它）
+     站点 ID 在下面 hm.src 的 ? 后面。 -->
+<link rel="dns-prefetch" href="//hm.baidu.com">
+<link rel="preconnect" href="https://hm.baidu.com" crossorigin>
+<script>
+  var _hmt = window._hmt = window._hmt || [];
+  window.__analytics = { ready: false, failed: false, start: Date.now() };
+  (function () {
+    var hm = document.createElement('script');
+    hm.src = 'https://hm.baidu.com/hm.js?c6a7e5d19abc2b50696c43f0cbf78d4b';
+    hm.async = true;
+    hm.onload = function () { window.__analytics.ready = true; };   // 加载完就会自动上报
+    hm.onerror = function () { window.__analytics.failed = true; }; // 多半是被广告拦截插件挡了
+    var s = document.getElementsByTagName('script')[0];
+    s.parentNode.insertBefore(hm, s);
+  })();
+</script>
+<!-- 资源统一用相对路径（不带开头的 /）：这样双击本地打开（file://）和放到站点根目录都能正常显示。
+     注意别用 /xxx 这种根路径——双击打开时会去找磁盘根目录，图片全变碎图标。
+     奶龙图提前加载，别等解析到 <img> 才开始下（它是首屏最大的资源）。 -->
+<link rel="preload" as="image" type="image/webp" href="core.webp" fetchpriority="high">
+<noscript><meta http-equiv="refresh" content="3;url=https://www.gzhu.edu.cn/"></noscript>
+<style>
+  :root {
+    --bg: #fffbef;
+    --fg: #3a2c00;
+    --muted: #8f7a45;
+    --ink: #fece0e;
+    --track: rgba(254, 206, 14, .22);
+    --card: #ffffff;
+    --size: min(64vw, 44vh, 340px);
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #080b1a;
+      --fg: #eef1ff;
+      --muted: #8b93b8;
+      --track: rgba(254, 206, 14, .18);
+      --card: #141a2e;
+    }
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    min-height: 100vh;
+    min-height: 100svh;
+    display: grid;
+    place-items: center;
+    padding: 24px 16px 56px;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* 深色模式下点几颗星星，「宇宙」感 */
+  body::before {
+    content: "";
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    opacity: 0;
+    background-image:
+      radial-gradient(1.6px 1.6px at 12% 18%, #fff, transparent),
+      radial-gradient(1.2px 1.2px at 28% 72%, #dfe8ff, transparent),
+      radial-gradient(1.8px 1.8px at 44% 12%, #fff, transparent),
+      radial-gradient(1.1px 1.1px at 61% 46%, #cfe0ff, transparent),
+      radial-gradient(1.5px 1.5px at 78% 24%, #fff, transparent),
+      radial-gradient(1.2px 1.2px at 89% 66%, #e6ecff, transparent),
+      radial-gradient(1.4px 1.4px at 8% 88%, #fff, transparent),
+      radial-gradient(1.1px 1.1px at 68% 86%, #cfe0ff, transparent),
+      radial-gradient(1.3px 1.3px at 35% 38%, #fff, transparent),
+      radial-gradient(1.7px 1.7px at 95% 8%, #fff, transparent);
+  }
+  @media (prefers-color-scheme: dark) { body::before { opacity: .8; } }
+
+  main { display: flex; flex-direction: column; align-items: center; gap: 32px; text-align: center; }
+
+  /* 校徽：白底圆盘 + 旋转文字环 + 不转的中心奶龙，外面一圈进度条 */
+  .wrap { transition: transform .45s cubic-bezier(.5, 0, .75, 0), opacity .45s ease-in; }
+  .badge { position: relative; width: var(--size); aspect-ratio: 1; }
+  .badge::before { content: ""; position: absolute; inset: 1.4%; border-radius: 50%; background: #fff; }
+  /* 奶龙是 <img>，文字环是内联 <svg>，两个都要绝对定位铺满整个徽章。
+     内联 svg 会带默认的 inline 基线空隙，absolute 一并解决。 */
+  .badge img, .badge .ring { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .progress { position: absolute; inset: -5.5%; width: 111%; height: 111%; transform: rotate(-90deg); overflow: visible; }
+  .progress circle { fill: none; stroke-width: 1.1; stroke-linecap: round; }
+  .progress .track { stroke: var(--track); }
+  .progress .bar { stroke: var(--ink); stroke-dasharray: 100; stroke-dashoffset: 100; }
+
+  .copy { display: flex; flex-direction: column; align-items: center; gap: 10px; transition: opacity .3s, transform .3s; }
+  h1 { font-size: clamp(26px, 7vw, 40px); font-weight: 800; letter-spacing: .12em; padding-left: .12em; }
+  .status { font-size: clamp(14px, 4vw, 17px); }
+  .dots i {
+    display: inline-block; width: .3em; height: .3em; margin-left: .18em;
+    border-radius: 50%; background: currentColor; vertical-align: middle;
+    animation: dot 1s ease-in-out infinite;
+  }
+  .dots i:nth-child(2) { animation-delay: .15s; }
+  .dots i:nth-child(3) { animation-delay: .3s; }
+  .hint { font-size: 13px; color: var(--muted); }
+  .hint a { color: inherit; }
+
+  /* 右下角「关于」：打开时暂停倒计时 */
+  .about-btn {
+    position: fixed; right: max(8px, env(safe-area-inset-right)); bottom: max(8px, env(safe-area-inset-bottom));
+    padding: 8px 10px; border: 0; background: none; color: var(--muted);
+    font: inherit; font-size: 13px; cursor: pointer;
+    text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px;
+    transition: color .2s, text-decoration-color .2s, opacity .3s;
+  }
+  .about-btn:hover, .about-btn:focus-visible { color: var(--fg); text-decoration-color: currentColor; }
+  .about {
+    width: min(360px, calc(100vw - 32px)); margin: auto; padding: 0; border: 0; border-radius: 16px;
+    background: var(--card); color: var(--fg); box-shadow: 0 18px 50px rgba(0, 0, 0, .25);
+    cursor: auto; user-select: text;
+  }
+  .about[open] { animation: rise .25s ease-out; }
+  .about::backdrop { background: rgba(8, 9, 20, .55); backdrop-filter: blur(3px); }
+  .about-body { padding: 24px 22px 18px; }
+  .about h2 { font-size: 18px; margin-bottom: 12px; }
+  .about p { font-size: 14px; line-height: 1.7; }
+  .about p + p { margin-top: 8px; }
+  .about code {
+    padding: 1px 6px; border-radius: 6px; background: var(--track);
+    font: inherit; font-weight: 700; white-space: nowrap;
+  }
+  .about form { margin-top: 18px; text-align: right; }
+  .about form button {
+    padding: 8px 18px; border-radius: 999px; background: var(--ink); color: #3a2c00;
+    font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+
+  .run .badge { animation: pop .7s cubic-bezier(.34, 1.56, .64, 1) backwards; }
+  .run .core { animation: breathe 1.8s ease-in-out .7s infinite; }
+  .run .bar { animation: fill var(--delay) linear forwards; }
+  .run .copy { animation: rise .5s ease-out .15s backwards; }
+  .paused .bar { animation-play-state: paused; }
+  .leaving .wrap { transform: scale(1.18); opacity: 0; }
+  .leaving .copy { opacity: 0; transform: translateY(8px); }
+  .leaving .about-btn { opacity: 0; }
+
+  @keyframes pop { from { transform: scale(.55) rotate(-25deg); opacity: 0; } }
+  @keyframes breathe { 50% { transform: scale(1.03); } }
+  @keyframes fill { to { stroke-dashoffset: 0; } }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+  @keyframes dot { 0%, 100% { opacity: .25; transform: none; } 40% { opacity: 1; transform: translateY(-.25em); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .run .badge, .run .core, .run .copy, .dots i, .about[open] { animation: none; }
+    .wrap, .copy { transition: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="wrap" aria-hidden="true">
+    <div class="badge">
+      <svg class="progress" viewBox="0 0 100 100">
+        <circle class="track" cx="50" cy="50" r="49"/>
+        <circle class="bar" cx="50" cy="50" r="49" pathLength="100"/>
+      </svg>
+      <!-- 顺序有讲究：奶龙在前、文字环在后，文字环才会压在奶龙身上（奶龙的脚会垫在文字环下面）。
+           奶龙是独立文件（走 preload），文字环是内联 <svg>（构建时嵌进来，不产生请求）。 -->
+      <img class="core" src="core.webp" alt="" width="720" height="720" fetchpriority="high">
+      {{RING_SVG}}
+    </div>
+  </div>
+  <div class="copy">
+    <h1 id="title">宇宙奶龙大学</h1>
+    <p class="status">奶龙正在护送你前往 <strong id="to">广州大学</strong><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span></p>
+    <p class="hint" id="hint">立即前往</p>
+    <noscript><p class="hint"><a href="https://www.gzhu.edu.cn/">没有自动跳转？点这里</a></p></noscript>
+  </div>
+</main>
+<button class="about-btn" id="about-btn" type="button" hidden>关于</button>
+<dialog class="about" id="about" aria-labelledby="about-title">
+  <div class="about-body">
+    <h2 id="about-title">关于本站</h2>
+    <p>本站为奶龙站点：打开 <code>宇宙奶龙大学.com</code>，会先加载此页面，把你送到广州大学官网。</p>
+    <p>本站与广州大学并无任何官方关联，域名、校徽与页面均为网友自制，仅作趣味跳转之用。</p>
+    <form method="dialog"><button>知道了</button></form>
+  </div>
+</dialog>
+<script>
+(() => {
+  const TARGET = 'https://www.gzhu.edu.cn/';   // ← 要跳转的大学官网，改这里
+  const NAME   = '广州大学';                    // ← 文案里出现的校名，改这里
+  const EASTER = '陈宇龙大学';                  // ← 彩蛋：键盘依次按 cy 触发
+
+  const stay = new URLSearchParams(location.search).has('stay'); // 演示用：不跳转，循环播放
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const DELAY = reduce ? 1200 : 2600; // 入场动画 + 停留：进度条走到头的时刻（ms）
+  const EXIT = reduce ? 0 : 450;      // 离场动画时长，和 CSS 里 .wrap 的 transition 一致
+  const BUFFER = 80;                  // 余量：等离场动画的最后一帧真正画完再跳
+  const TOTAL = DELAY + EXIT;         // ← 改这几个常量即可调整「动画播完才跳转」的节奏
+  const SPIN = 4000;                  // 文字环转一圈（ms）
+
+  const body = document.body;
+  body.style.setProperty('--delay', TOTAL + 'ms'); // 进度条正好在跳转那一刻走满
+  if (stay) document.getElementById('hint').textContent += '（演示模式，不会真的跳转）';
+
+  // 动画期间先把目标页面预热，避免跳过去时白屏一下
+  const prefetch = document.createElement('link');
+  prefetch.rel = 'prefetch';
+  prefetch.href = TARGET;
+  document.head.appendChild(prefetch);
+
+  const ring = reduce ? null : document.querySelector('.ring').animate(
+    [{ transform: 'rotate(0turn)' }, { transform: 'rotate(1turn)' }],
+    { duration: SPIN, iterations: Infinity }
+  );
+
+  const aboutBtn = document.getElementById('about-btn');
+  const about = document.getElementById('about');
+  aboutBtn.hidden = false; // 没有 JS 时弹窗打不开，按钮也就不显示
+
+  // 键盘依次按 c、y：换个校名，纯属好玩
+  let seq = '';
+  addEventListener('keydown', e => {
+    if (e.key.length !== 1) return;
+    seq = (seq + e.key.toLowerCase()).slice(-8);
+    if (!seq.endsWith('cy')) return;
+    const on = document.getElementById('to').textContent === EASTER;
+    document.getElementById('title').textContent = on ? '宇宙奶龙大学' : EASTER;
+    document.getElementById('to').textContent = on ? NAME : EASTER;
+    document.title = document.getElementById('title').textContent;
+  });
+
+  let timer, leaving, deadline, remaining;
+
+  function arm(ms) {
+    deadline = performance.now() + ms;
+    timer = setTimeout(() => leave('auto'), ms);
+  }
+
+  function start() {
+    leaving = false;
+    body.classList.remove('run', 'leaving');
+    void body.offsetWidth; // 重新触发 CSS 动画
+    body.classList.add('run');
+    if (ring) ring.playbackRate = 1;
+    arm(DELAY);
+  }
+
+  function leave(reason) {
+    if (leaving) return;
+    leaving = true;
+    clearTimeout(timer);
+    // 顺手记一笔：是用户等完了（auto）还是等不及点掉的（skip）
+    window._hmt.push(['_trackEvent', 'redirect', reason === 'skip' ? 'skip' : 'auto']);
+    body.classList.add('leaving');   // 离场动画开始（缩放 + 淡出，EXIT 毫秒）
+    if (ring) { // 离场时文字环越转越快
+      const t0 = performance.now();
+      requestAnimationFrame(function speedUp(now) {
+        const k = Math.min(1, (now - t0) / EXIT);
+        ring.playbackRate = 1 + 7 * k * k;
+        if (k < 1) requestAnimationFrame(speedUp);
+      });
+    }
+    // 等离场动画播完（EXIT + BUFFER）才真正跳转；演示模式下原地重播
+    setTimeout(stay ? start : redirect, stay ? EXIT + 600 : EXIT + BUFFER);
+  }
+
+  // 跳转前给统计脚本留一点时间。
+  // 本页总共只活 3 秒，而 hm.js 走外网实测要 1 秒以上；用户如果一进来就点掉，
+  // 跳转会在 0.7 秒左右发生，脚本还没加载完就被 location.replace 掐断，这次访问就丢了。
+  // 策略：保证「页面打开到真正跳转」至少经过 BUDGET 毫秒。
+  //   · 正常等完动画的（约 3.1 秒）已经远超预算 → 不额外等待，用户完全无感；
+  //   · 提前点击的 → 最多补等几百毫秒，把这次访问救回来。
+  // 被广告拦截插件挡掉（failed）时一秒都不等，绝不为了统计拖累用户。
+  const BUDGET = 1200;
+  function redirect() {
+    const a = window.__analytics;
+    const elapsed = a ? Date.now() - a.start : Infinity;
+    if (!a || a.ready || a.failed || elapsed >= BUDGET) {
+      location.replace(TARGET);
+      return;
+    }
+    const poll = setInterval(() => {
+      const b = window.__analytics;
+      if (b.ready || b.failed || Date.now() - b.start >= BUDGET) {
+        clearInterval(poll);
+        location.replace(TARGET);
+      }
+    }, 60);
+  }
+
+  // 打开「关于」时暂停倒计时和进度条，关闭后从剩余时间继续
+  aboutBtn.addEventListener('click', () => {
+    if (leaving) return;
+    clearTimeout(timer);
+    remaining = Math.max(0, deadline - performance.now());
+    body.classList.add('paused');
+    about.showModal();
+  });
+  about.addEventListener('close', () => {
+    body.classList.remove('paused');
+    if (!leaving) arm(remaining);
+  });
+  about.addEventListener('click', e => { if (e.target === about) about.close(); }); // 点遮罩关闭
+
+  // 点击或按键立即跳转；「关于」相关的操作和 Tab、修饰键除外
+  const IGNORED_KEYS = ['Tab', 'Shift', 'Control', 'Alt', 'Meta'];
+  function skip(e) {
+    if (about.open || aboutBtn.contains(e.target)) return;
+    if (e.type === 'keydown' && IGNORED_KEYS.includes(e.key)) return;
+    leave('skip');
+  }
+  addEventListener('pointerdown', skip);
+  addEventListener('keydown', skip);
+  start();
+})();
+</script>
+</body>
+</html>
