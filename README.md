@@ -6,7 +6,7 @@
 **推荐 [Cloudflare Pages](#方案-acloudflare-pages推荐但要迁-ns) 或 [GitHub Pages](#方案-bgithub-pages不用动-ns最省事)，两个都不需要买服务器、也不需要 ICP 备案。**
 
 ```
-index.html                  页面 + 动画 + 跳转逻辑（CSS/JS 全部内联）
+index.html                  页面 + 动画 + 跳转逻辑 + 百度统计（CSS/JS 全部内联）
 ring.svg                    校徽外圈：旋转的「宇宙奶龙大学·」文字环（矢量，3.5KB）
 core.webp / core.png        校徽中心：奶龙（站在文字环底下，所以只有上半身露出来）
 favicon.ico                 浏览器页签图标（16/32/48）
@@ -99,6 +99,8 @@ const DELAY = 6000;   // 6 秒后才开始离场
 | 奶龙的样子 | 换掉 `双手交叉站立.png`，重跑 `tools/prepare_nailong.py` |
 | 抠图边缘 | `tools/prepare_nailong.py` 里的 `S_LO` / `S_HI` 阈值，配合 `tools/preview-core.png` 调 |
 | 分享卡片 | `tools/build_assets.py` → `build_og_html()`，重跑后用 Edge 无头截图 |
+| 百度统计的站点 ID | `index.html` 里 `hm.src` 那一行的 `?` 后面 |
+| 统计兜底等待时长 | `index.html` 里的 `const BUDGET = 1200;`（调 0 等于不等待） |
 
 重新生成图形：
 
@@ -115,7 +117,83 @@ python tools/build_assets.py       # 文字环 → ring.svg + tools/og.html
   --window-size=1200,630 --screenshot="og.png" "file:///<绝对路径>/tools/og.html"
 ```
 
-## 4. 部署：GitHub Pages 或 Cloudflare Pages（都不用买服务器）
+## 4. 百度统计
+
+已经接好了，用的**和你 `Thomas455.github.io` 同一个站点 ID**：
+
+```
+b27042a7b1bc987eb347a45797bd2c1f
+```
+
+数据会汇总进同一个百度统计后台，在「实时访客」里能直接看到。
+
+### 代码在哪
+
+在 `<head>` 里（不是页尾）—— 这点很关键，原因见下。用的是百度官方的那段 loader，但做了三点改动：
+
+```html
+<link rel="dns-prefetch" href="//hm.baidu.com">
+<link rel="preconnect" href="https://hm.baidu.com" crossorigin>
+<script>
+  window._hmt = window._hmt || [];
+  window.__analytics = { ready: false, failed: false, start: Date.now() };
+  (function () {
+    var hm = document.createElement('script');
+    hm.src = 'https://hm.baidu.com/hm.js?b27042a7b1bc987eb347a45797bd2c1f';
+    hm.async = true;
+    hm.onload  = function () { window.__analytics.ready  = true; };
+    hm.onerror = function () { window.__analytics.failed = true; };
+    var s = document.getElementsByTagName('script')[0];
+    s.parentNode.insertBefore(hm, s);
+  })();
+</script>
+```
+
+### 为什么要这么麻烦：本页只活 3 秒
+
+普通网页统计随便放哪都行，但这个页面 **3 秒后就 `location.replace` 跳走了**。
+而 `hm.js` 走外网，实测要 **0.4 ~ 1.2 秒**才加载完（教育网实测 TTFB 约 0.4s，首次更慢）。
+
+如果用户一进页面就点掉，跳转会在 **0.7 秒左右**发生 —— 那时候脚本还没加载完，
+`location.replace` 一执行，这次访问就被掐断了，**统计直接丢**。
+
+所以做了两件事：
+
+1. **`<head>` 里尽早加载** + `preconnect` 提前建好连接，把加载时间压到最短；
+2. **跳转前兜底等待**（`redirect()` 里那段）：
+
+```js
+const BUDGET = 1200;   // 保证「打开到跳转」至少经过 1200ms
+```
+
+* 老老实实等动画播完的（约 3.1 秒）→ 早就超过预算，**一秒都不多等**，用户完全无感；
+* 提前点击跳过的 → 最多补等几百毫秒，把这次访问救回来；
+* 被广告拦截插件挡掉（`onerror`）→ **一秒都不等**，绝不为了统计拖累用户。
+
+### 顺手记了一个事件
+
+跳转时会发一个 `_trackEvent`，在后台「事件分析」里能看到：
+
+| 事件类别 | 动作 | 含义 |
+| --- | --- | --- |
+| `redirect` | `auto` | 用户等完动画自动跳走 |
+| `redirect` | `skip` | 用户等不及点掉的 |
+
+`skip` 占比高说明动画太长了，可以调小 `DELAY`。
+
+### 怎么验证
+
+1. 部署后打开 `https://宇宙奶龙大学.com/`，等它跳走；
+2. 去百度统计后台 → **实时访客**，几秒内应该能看到这次访问；
+3. 手机流量下再试一次，能区分统计的是不是只有你自己的网络。
+
+### 注意事项
+
+* **广告拦截插件会挡 `hm.baidu.com`**，被挡的访问统计不到，这是所有前端统计的通病，不用管；
+* 百度统计对**中文域名和 GitHub Pages / Cloudflare Pages 都正常**，不用额外配置；
+* 统计脚本是 `async` 的，**不影响页面渲染和动画**，最坏情况就是不统计。
+
+## 5. 部署：GitHub Pages 或 Cloudflare Pages（都不用买服务器）
 
 两个都**不需要 ICP 备案**（服务器在境外），免费额度对这么一个小页面来说完全用不完。
 唯一要注意的是国内访问速度：GitHub Pages 在国内时快时慢，Cloudflare 一般更稳。
@@ -231,7 +309,7 @@ DNSPod 给 `@` 和 `www` 各加一条 **A 记录**指向服务器公网 IP。
 > **GitHub Pages 和 Cloudflare Pages 都在境外，不需要备案** —— 这也是建议你用它们的原因。
 > 代价是国内访问速度：GitHub Pages 时快时慢，Cloudflare 相对稳一些，但都不会比备案过的国内节点快。
 
-## 5. 上线自检
+## 6. 上线自检
 
 - [ ] `https://宇宙奶龙大学.com/?stay` 能看到完整动画，进度条走满、奶龙和文字环都在
 - [ ] 奶龙在徽章正中间（不偏左不偏右；`tools/prepare_nailong.py` 跑完会打印偏移量自检）
@@ -244,8 +322,9 @@ DNSPod 给 `@` 和 `www` 各加一条 **A 记录**指向服务器公网 IP。
 - [ ] **双击本地 `index.html` 时图片也正常**（资源是相对路径，不该出现碎图标）
 - [ ] `http://` 能自动跳 `https://`（GitHub Pages 记得勾 Enforce HTTPS；Cloudflare 自动有）
 - [ ] 从国内网络实测打开一次（GitHub Pages 偶尔会慢到十几秒，能接受就行）
+- [ ] 跳转后去百度统计后台「实时访客」，能看到这次访问（手机流量再试一次更准）
 
-## 6. 改了东西怎么重新发布
+## 7. 改了东西怎么重新发布
 
 ```powershell
 git add -A
@@ -258,7 +337,7 @@ GitHub Pages 和 Cloudflare Pages 都会在推上去之后自动重新发布，�
 > 页面资源里的 `og.png`、`core.webp` 这些文件名没变，浏览器/CDN 可能缓存旧版本。
 > 如果改完看不到效果，硬刷新（Ctrl+F5）或者给文件名加版本号（如 `core.v2.webp`）。
 
-## 7. 说明
+## 8. 说明
 
 * 本站与广州大学**没有任何官方关联**，纯属网友自制的整活跳转页，页面里的「关于」弹窗已注明。
 * 参考站 `中国奶龙大学.com` 的做法是：域名在 Squarespace 上做 **302** 跳到 `nailong.dykey.net` 落地页，再由落地页的 JS 跳到学校官网（大连理工大学）。本站把它简化成「一个静态页 + 前端跳转」，少一跳、更快，也不需要第二个域名。

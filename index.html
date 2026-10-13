@@ -16,6 +16,25 @@
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" type="image/png" sizes="512x512" href="favicon.png">
 <link rel="apple-touch-icon" href="favicon.png">
+<!-- 百度统计：本页 3 秒后就跳走了，脚本必须最早开始加载，晚了这次访问就统计不到。
+     preconnect 省掉 DNS + TLS 的往返；下面的 loader 是官方写法（内联，省一次请求）。
+     站点 ID 与 Thomas455.github.io 用的是同一个，数据会汇总在同一个后台。 -->
+<link rel="dns-prefetch" href="//hm.baidu.com">
+<link rel="preconnect" href="https://hm.baidu.com" crossorigin>
+<script>
+  window._hmt = window._hmt || [];
+  // 记一下统计脚本的状态，跳转前好判断要不要等它（见页面底部 analyticsGrace）
+  window.__analytics = { ready: false, failed: false, start: Date.now() };
+  (function () {
+    var hm = document.createElement('script');
+    hm.src = 'https://hm.baidu.com/hm.js?b27042a7b1bc987eb347a45797bd2c1f';
+    hm.async = true;
+    hm.onload = function () { window.__analytics.ready = true; };   // 加载完就会自动上报
+    hm.onerror = function () { window.__analytics.failed = true; }; // 多半是被广告拦截插件挡了
+    var s = document.getElementsByTagName('script')[0];
+    s.parentNode.insertBefore(hm, s);
+  })();
+</script>
 <!-- 资源统一用相对路径（不带开头的 /）：这样双击本地打开（file://）和放到站点根目录都能正常显示。
      注意别用 /xxx 这种根路径——双击打开时会去找磁盘根目录，图片全变碎图标。
      顺序有讲究：core 在前 ring 在后，文字环才会压在奶龙身上（奶龙的脚会垫在文字环下面） -->
@@ -234,7 +253,7 @@
 
   function arm(ms) {
     deadline = performance.now() + ms;
-    timer = setTimeout(leave, ms);
+    timer = setTimeout(() => leave('auto'), ms);
   }
 
   function start() {
@@ -246,10 +265,12 @@
     arm(DELAY);
   }
 
-  function leave() {
+  function leave(reason) {
     if (leaving) return;
     leaving = true;
     clearTimeout(timer);
+    // 顺手记一笔：是用户等完了（auto）还是等不及点掉的（skip）
+    window._hmt.push(['_trackEvent', 'redirect', reason === 'skip' ? 'skip' : 'auto']);
     body.classList.add('leaving');   // 离场动画开始（缩放 + 淡出，EXIT 毫秒）
     if (ring) { // 离场时文字环越转越快
       const t0 = performance.now();
@@ -260,7 +281,31 @@
       });
     }
     // 等离场动画播完（EXIT + BUFFER）才真正跳转；演示模式下原地重播
-    setTimeout(stay ? start : () => location.replace(TARGET), stay ? EXIT + 600 : EXIT + BUFFER);
+    setTimeout(stay ? start : redirect, stay ? EXIT + 600 : EXIT + BUFFER);
+  }
+
+  // 跳转前给统计脚本留一点时间。
+  // 本页总共只活 3 秒，而 hm.js 走外网实测要 1 秒以上；用户如果一进来就点掉，
+  // 跳转会在 0.7 秒左右发生，脚本还没加载完就被 location.replace 掐断，这次访问就丢了。
+  // 策略：保证「页面打开到真正跳转」至少经过 BUDGET 毫秒。
+  //   · 正常等完动画的（约 3.1 秒）已经远超预算 → 不额外等待，用户完全无感；
+  //   · 提前点击的 → 最多补等几百毫秒，把这次访问救回来。
+  // 被广告拦截插件挡掉（failed）时一秒都不等，绝不为了统计拖累用户。
+  const BUDGET = 1200;
+  function redirect() {
+    const a = window.__analytics;
+    const elapsed = a ? Date.now() - a.start : Infinity;
+    if (!a || a.ready || a.failed || elapsed >= BUDGET) {
+      location.replace(TARGET);
+      return;
+    }
+    const poll = setInterval(() => {
+      const b = window.__analytics;
+      if (b.ready || b.failed || Date.now() - b.start >= BUDGET) {
+        clearInterval(poll);
+        location.replace(TARGET);
+      }
+    }, 60);
   }
 
   // 打开「关于」时暂停倒计时和进度条，关闭后从剩余时间继续
@@ -282,7 +327,7 @@
   function skip(e) {
     if (about.open || aboutBtn.contains(e.target)) return;
     if (e.type === 'keydown' && IGNORED_KEYS.includes(e.key)) return;
-    leave();
+    leave('skip');
   }
   addEventListener('pointerdown', skip);
   addEventListener('keydown', skip);
