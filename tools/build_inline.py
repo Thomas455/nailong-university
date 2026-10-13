@@ -1,18 +1,21 @@
 # -*- coding: utf-8 -*-
-"""把 tools/index.template.html 构建成部署用的 index.html（ring.svg 内联版）。
+"""把 tools/index.template.html 构建成部署用的 index.html。
+
+构建做两件事
+------------
+1. **内联 ring.svg** —— SVG 是纯文本，3,584 字节 gzip 后只有 519 字节。
+   内联进 HTML 几乎不增加传输量，却省掉一整个请求。
+2. **剥掉 HTML 注释** —— 模板里的注释是给人看的文档，没必要让每个访客下载。
+   实测 6 段注释合计 1,593 字符，gzip 后仍占 1,537 字节（页面的 ~20%）。
+   只删 `<!-- -->`，CSS 的 `/* */` 和 JS 里的东西一律不碰。
 
 为什么内联
 ----------
 GitHub Pages 只提供 HTTP/1.1，没有多路复用，每个资源都要单独一次往返。
 这个站部署在境外，实测一个 RTT 约 0.25 秒，少一个请求就少一次往返。
 
-只内联 ring.svg（稳赚）
------------------------
-SVG 是纯文本，3,584 字节 gzip 后只有 519 字节。内联进 HTML 后跟页面一起压，
-**几乎不增加传输量，却省掉一整个请求**。
-
-不内联 core.webp（实测是亏的）
-------------------------------
+为什么不内联 core.webp（实测是亏的）
+------------------------------------
 一开始以为「base64 膨胀会被 gzip 抵消」，实测证明是错的：
 
     core.webp 原始      15,584  -> 单独 gzip 15,150
@@ -26,7 +29,8 @@ SVG 是纯文本，3,584 字节 gzip 后只有 519 字节。内联进 HTML 后�
 同理不内联 favicon.ico：5,727 字节的二进制，base64 后混在 HTML 里 gzip 仍有
 5,780 字节，比它本身还大 —— 内联纯亏，保留文件引用。
 
-结论：只内联 ring.svg，首屏 3 个请求 → 2 个，传输量基本不变。
+净效果：首屏 3 个请求 → 2 个，传输量基本不变（+944 B 换一次往返），
+再靠剥注释把 gzip 后压回 ~6.7KB。
 
 跑法
 ----
@@ -82,6 +86,23 @@ def inline_ring_svg(path: Path) -> str:
     return svg.strip()
 
 
+def strip_comments(html: str) -> str:
+    """去掉 HTML 注释（构建产物专用，模板里的注释原样保留）。
+
+    模板是给人读的，注释是文档，必须留着；但部署出去的页面没必要带着它们 ——
+    实测 6 段注释合计 1,593 字符，gzip 后仍占 1,537 字节，是页面的 ~20%。
+
+    只处理 <!-- -->（HTML 注释）。CSS 的 /* */ 和 JS 的 // 一律不碰：
+    那些地方动起刀来风险大（比如 https:// 里的 // 就会被误伤），收益也小。
+    """
+    # 非贪婪匹配，且要求注释里不出现 -->（不会有嵌套 HTML 注释）
+    html = re.sub(r"<!--(?:(?!-->).)*?-->", "", html, flags=re.S)
+    # 删完注释往往会留下一堆空行，压掉，别让产物里全是空白
+    html = re.sub(r"\n[ \t]*\n(?:[ \t]*\n)+", "\n", html)
+    html = re.sub(r"[ \t]+\n", "\n", html)
+    return html
+
+
 def gz(data: bytes) -> int:
     return len(gzip.compress(data, 9))
 
@@ -135,14 +156,12 @@ def main() -> int:
 
     html = html.replace("{{RING_SVG}}", inline_ring_svg(RING_SVG))
 
-    OUTPUT.write_text(html, encoding="utf-8")
+    # 注释只在模板里保留（那是文档），产物里剥掉 —— 省 gzip 后约 1.5KB
+    size_with_comments = len(html.encode("utf-8"))
+    html = strip_comments(html)
 
-    # ---------------- 自检 ----------------
-    raw = html.encode("utf-8")
-    print(f"已生成 {OUTPUT.name}")
-    print(f"  裸大小 : {len(raw):>7,} 字节")
-    print(f"  gzip后 : {gz(raw):>7,} 字节   ← 线上实际传输量")
-
+    # 先做自检再写文件：自检不过就别把坏产物写出去
+    reqs, deferred = audit(html)
     ok = True
 
     leftover = re.findall(r"\{\{[A-Z_]+\}\}", html)
@@ -150,9 +169,6 @@ def main() -> int:
         print(f"  ❌ 残留占位符: {set(leftover)}")
         ok = False
 
-    reqs, deferred = audit(html)
-    print(f"  首屏请求: {reqs if reqs else '（无）'}")
-    print(f"  延迟加载: {deferred if deferred else '（无）'}")
     missing = EXPECTED_REQUESTS - set(reqs)
     extra = set(reqs) - EXPECTED_REQUESTS
     if missing:
@@ -167,8 +183,27 @@ def main() -> int:
         print('  ❌ 内联 svg 缺少 class="ring"')
         ok = False
 
-    print("  ✅ 自检通过" if ok else "  ⚠️ 自检有问题，见上")
-    return 0 if ok else 1
+    # 产物里不该再有 HTML 注释
+    if "<!--" in html:
+        left = re.findall(r"<!--(?:(?!-->).)*?-->", html, re.S)
+        print(f"  ⚠️ 产物里仍有 {len(left)} 段注释未清除")
+        for c in left[:3]:
+            print(f"      {c[:60]}")
+
+    if not ok:
+        print("❌ 自检未通过，没有写出 index.html（避免发布坏产物）", file=sys.stderr)
+        return 1
+
+    OUTPUT.write_text(html, encoding="utf-8")
+
+    raw = html.encode("utf-8")
+    print(f"已生成 {OUTPUT.name}")
+    print(f"  裸大小 : {len(raw):>7,} 字节  （去注释前 {size_with_comments:,}）")
+    print(f"  gzip后 : {gz(raw):>7,} 字节  ← 线上实际传输量")
+    print(f"  首屏请求: {reqs if reqs else '（无）'}")
+    print(f"  延迟加载: {deferred if deferred else '（无）'}")
+    print("  ✅ 自检通过")
+    return 0
 
 
 if __name__ == "__main__":

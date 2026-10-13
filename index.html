@@ -1,25 +1,5 @@
 <!doctype html>
-<!-- ============================================================================
-     这是【模板 / 源文件】，不是部署用的页面。
-     部署用的是同目录下的 index.html，它由下面这条命令生成：
 
-         python tools/build_inline.py
-
-     构建只做一件事：把 ring.svg 内联成 <svg>（占位符 <svg class="ring" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 720" width="720" height="720" role="img" aria-label="宇宙奶龙大学"><g font-family="Microsoft YaHei, PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="32" font-weight="800" text-anchor="middle"><g transform="rotate(0.0 360 360)"><text x="360" y="119.2" fill="#3a2c00">宇</text></g><g transform="rotate(10.2857 360 360)"><text x="360" y="119.2" fill="#3a2c00">宙</text></g><g transform="rotate(20.5714 360 360)"><text x="360" y="119.2" fill="#3a2c00">奶</text></g><g transform="rotate(30.8571 360 360)"><text x="360" y="119.2" fill="#3a2c00">龙</text></g><g transform="rotate(41.1429 360 360)"><text x="360" y="119.2" fill="#3a2c00">大</text></g><g transform="rotate(51.4286 360 360)"><text x="360" y="119.2" fill="#3a2c00">学</text></g><g transform="rotate(61.7143 360 360)"><text x="360" y="119.2" fill="#d99a00">·</text></g><g transform="rotate(72.0 360 360)"><text x="360" y="119.2" fill="#3a2c00">宇</text></g><g transform="rotate(82.2857 360 360)"><text x="360" y="119.2" fill="#3a2c00">宙</text></g><g transform="rotate(92.5714 360 360)"><text x="360" y="119.2" fill="#3a2c00">奶</text></g><g transform="rotate(102.8571 360 360)"><text x="360" y="119.2" fill="#3a2c00">龙</text></g><g transform="rotate(113.1429 360 360)"><text x="360" y="119.2" fill="#3a2c00">大</text></g><g transform="rotate(123.4286 360 360)"><text x="360" y="119.2" fill="#3a2c00">学</text></g><g transform="rotate(133.7143 360 360)"><text x="360" y="119.2" fill="#d99a00">·</text></g><g transform="rotate(144.0 360 360)"><text x="360" y="119.2" fill="#3a2c00">宇</text></g><g transform="rotate(154.2857 360 360)"><text x="360" y="119.2" fill="#3a2c00">宙</text></g><g transform="rotate(164.5714 360 360)"><text x="360" y="119.2" fill="#3a2c00">奶</text></g><g transform="rotate(174.8571 360 360)"><text x="360" y="119.2" fill="#3a2c00">龙</text></g><g transform="rotate(185.1429 360 360)"><text x="360" y="119.2" fill="#3a2c00">大</text></g><g transform="rotate(195.4286 360 360)"><text x="360" y="119.2" fill="#3a2c00">学</text></g><g transform="rotate(205.7143 360 360)"><text x="360" y="119.2" fill="#d99a00">·</text></g><g transform="rotate(216.0 360 360)"><text x="360" y="119.2" fill="#3a2c00">宇</text></g><g transform="rotate(226.2857 360 360)"><text x="360" y="119.2" fill="#3a2c00">宙</text></g><g transform="rotate(236.5714 360 360)"><text x="360" y="119.2" fill="#3a2c00">奶</text></g><g transform="rotate(246.8571 360 360)"><text x="360" y="119.2" fill="#3a2c00">龙</text></g><g transform="rotate(257.1429 360 360)"><text x="360" y="119.2" fill="#3a2c00">大</text></g><g transform="rotate(267.4286 360 360)"><text x="360" y="119.2" fill="#3a2c00">学</text></g><g transform="rotate(277.7143 360 360)"><text x="360" y="119.2" fill="#d99a00">·</text></g><g transform="rotate(288.0 360 360)"><text x="360" y="119.2" fill="#3a2c00">宇</text></g><g transform="rotate(298.2857 360 360)"><text x="360" y="119.2" fill="#3a2c00">宙</text></g><g transform="rotate(308.5714 360 360)"><text x="360" y="119.2" fill="#3a2c00">奶</text></g><g transform="rotate(318.8571 360 360)"><text x="360" y="119.2" fill="#3a2c00">龙</text></g><g transform="rotate(329.1429 360 360)"><text x="360" y="119.2" fill="#3a2c00">大</text></g><g transform="rotate(339.4286 360 360)"><text x="360" y="119.2" fill="#3a2c00">学</text></g><g transform="rotate(349.7143 360 360)"><text x="360" y="119.2" fill="#d99a00">·</text></g></g></svg>）。
-
-     为什么只内联 ring.svg，不内联奶龙图
-     ------------------------------------
-     GitHub Pages 只有 HTTP/1.1（没有多路复用），每个资源都要单独一次往返，
-     而这个站部署在境外、实测一个 RTT 约 0.25 秒。所以「少一个请求」很值钱。
-
-     · ring.svg 是纯文本，3,584 字节 gzip 后只有 519 字节 —— 内联进 HTML
-       几乎不增加传输量，却省掉一整个请求。稳赚。
-     · core.webp 已经压缩过，base64 之后 gzip 压不动（实测 20,780 → 15,251），
-       内联会把 HTML 从 23KB 撑到 46KB。多传 15KB 只换一次往返，不划算，
-       所以它保持独立文件 + preload 提前加载。
-
-     ⚠️ 改页面请改这个文件，然后重跑构建；直接改 index.html 会在下次构建时被覆盖。
-     ============================================================================ -->
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
@@ -29,23 +9,15 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="宇宙奶龙大学">
 <meta property="og:description" content="奶龙正在护送你前往宇宙奶龙大学">
-<!-- 分享卡片图片必须是绝对地址；换域名时改这一行（og.png 是独立文件，只有爬虫会拉，不占首屏） -->
+
 <meta property="og:image" content="https://xn--psszg58cydsdq780c.com/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<!-- 页签图标只声明 favicon.ico（5.7KB，内含 16/32/48 三档）。
-     不要再加一句 <link rel="icon" sizes="512x512" href="favicon.png">
-     —— 浏览器可能就此去下那张 512×512 的 PNG（93KB！）当页签图标，纯浪费。
-     favicon.png 只留给 apple-touch-icon（「添加到主屏幕」时才拉）。 -->
+
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="apple-touch-icon" href="favicon.png">
-<!-- 百度统计（本站专用站点 ID，与 Thomas455.github.io 是分开的两个站点）。
-     本页 3 秒后就跳走了，脚本必须最早开始加载，晚了这次访问就统计不到；
-     preconnect 省掉 DNS + TLS 的往返。loader 是官方写法，只加了两处：
-       · async        —— 不阻塞首屏
-       · onload/onerror —— 记状态给页面底部的 redirect() 用（跳转前好判断要不要等它）
-     站点 ID 在下面 hm.src 的 ? 后面。 -->
+
 <link rel="dns-prefetch" href="//hm.baidu.com">
 <link rel="preconnect" href="https://hm.baidu.com" crossorigin>
 <script>
@@ -61,9 +33,7 @@
     s.parentNode.insertBefore(hm, s);
   })();
 </script>
-<!-- 资源统一用相对路径（不带开头的 /）：这样双击本地打开（file://）和放到站点根目录都能正常显示。
-     注意别用 /xxx 这种根路径——双击打开时会去找磁盘根目录，图片全变碎图标。
-     奶龙图提前加载，别等解析到 <img> 才开始下（它是首屏最大的资源）。 -->
+
 <link rel="preload" as="image" type="image/webp" href="core.webp" fetchpriority="high">
 <noscript><meta http-equiv="refresh" content="3;url=https://www.gzhu.edu.cn/"></noscript>
 <style>
@@ -207,8 +177,7 @@
         <circle class="track" cx="50" cy="50" r="49"/>
         <circle class="bar" cx="50" cy="50" r="49" pathLength="100"/>
       </svg>
-      <!-- 顺序有讲究：奶龙在前、文字环在后，文字环才会压在奶龙身上（奶龙的脚会垫在文字环下面）。
-           奶龙是独立文件（走 preload），文字环是内联 <svg>（构建时嵌进来，不产生请求）。 -->
+
       <img class="core" src="core.webp" alt="" width="720" height="720" fetchpriority="high">
       <svg class="ring" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 720" width="720" height="720" role="img" aria-label="宇宙奶龙大学"><g font-family="Microsoft YaHei, PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="32" font-weight="800" text-anchor="middle"><g transform="rotate(0.0 360 360)"><text x="360" y="119.2" fill="#3a2c00">宇</text></g><g transform="rotate(10.2857 360 360)"><text x="360" y="119.2" fill="#3a2c00">宙</text></g><g transform="rotate(20.5714 360 360)"><text x="360" y="119.2" fill="#3a2c00">奶</text></g><g transform="rotate(30.8571 360 360)"><text x="360" y="119.2" fill="#3a2c00">龙</text></g><g transform="rotate(41.1429 360 360)"><text x="360" y="119.2" fill="#3a2c00">大</text></g><g transform="rotate(51.4286 360 360)"><text x="360" y="119.2" fill="#3a2c00">学</text></g><g transform="rotate(61.7143 360 360)"><text x="360" y="119.2" fill="#d99a00">·</text></g><g transform="rotate(72.0 360 360)"><text x="360" y="119.2" fill="#3a2c00">宇</text></g><g transform="rotate(82.2857 360 360)"><text x="360" y="119.2" fill="#3a2c00">宙</text></g><g transform="rotate(92.5714 360 360)"><text x="360" y="119.2" fill="#3a2c00">奶</text></g><g transform="rotate(102.8571 360 360)"><text x="360" y="119.2" fill="#3a2c00">龙</text></g><g transform="rotate(113.1429 360 360)"><text x="360" y="119.2" fill="#3a2c00">大</text></g><g transform="rotate(123.4286 360 360)"><text x="360" y="119.2" fill="#3a2c00">学</text></g><g transform="rotate(133.7143 360 360)"><text x="360" y="119.2" fill="#d99a00">·</text></g><g transform="rotate(144.0 360 360)"><text x="360" y="119.2" fill="#3a2c00">宇</text></g><g transform="rotate(154.2857 360 360)"><text x="360" y="119.2" fill="#3a2c00">宙</text></g><g transform="rotate(164.5714 360 360)"><text x="360" y="119.2" fill="#3a2c00">奶</text></g><g transform="rotate(174.8571 360 360)"><text x="360" y="119.2" fill="#3a2c00">龙</text></g><g transform="rotate(185.1429 360 360)"><text x="360" y="119.2" fill="#3a2c00">大</text></g><g transform="rotate(195.4286 360 360)"><text x="360" y="119.2" fill="#3a2c00">学</text></g><g transform="rotate(205.7143 360 360)"><text x="360" y="119.2" fill="#d99a00">·</text></g><g transform="rotate(216.0 360 360)"><text x="360" y="119.2" fill="#3a2c00">宇</text></g><g transform="rotate(226.2857 360 360)"><text x="360" y="119.2" fill="#3a2c00">宙</text></g><g transform="rotate(236.5714 360 360)"><text x="360" y="119.2" fill="#3a2c00">奶</text></g><g transform="rotate(246.8571 360 360)"><text x="360" y="119.2" fill="#3a2c00">龙</text></g><g transform="rotate(257.1429 360 360)"><text x="360" y="119.2" fill="#3a2c00">大</text></g><g transform="rotate(267.4286 360 360)"><text x="360" y="119.2" fill="#3a2c00">学</text></g><g transform="rotate(277.7143 360 360)"><text x="360" y="119.2" fill="#d99a00">·</text></g><g transform="rotate(288.0 360 360)"><text x="360" y="119.2" fill="#3a2c00">宇</text></g><g transform="rotate(298.2857 360 360)"><text x="360" y="119.2" fill="#3a2c00">宙</text></g><g transform="rotate(308.5714 360 360)"><text x="360" y="119.2" fill="#3a2c00">奶</text></g><g transform="rotate(318.8571 360 360)"><text x="360" y="119.2" fill="#3a2c00">龙</text></g><g transform="rotate(329.1429 360 360)"><text x="360" y="119.2" fill="#3a2c00">大</text></g><g transform="rotate(339.4286 360 360)"><text x="360" y="119.2" fill="#3a2c00">学</text></g><g transform="rotate(349.7143 360 360)"><text x="360" y="119.2" fill="#d99a00">·</text></g></g></svg>
     </div>
