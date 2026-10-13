@@ -41,7 +41,8 @@
     --fg: #3a2c00;
     --muted: #8f7a45;
     --ink: #fece0e;
-    --warn: #e0483d;
+    --warn: #e0483d;   /* 暂停态：红 */
+    --go: #1f9d55;     /* 恢复态：绿 */
     --track: rgba(254, 206, 14, .22);
     --card: #ffffff;
     --size: min(64vw, 44vh, 340px);
@@ -72,7 +73,7 @@
     user-select: none;
     -webkit-tap-highlight-color: transparent;
   }
-  /* 深色模式下点几颗星星，「宇宙」感 */
+  /* 星星层：位置固定（写死各坐标），整层缓慢闪烁（keyframes 动 opacity，不动 background-position） */
   body::before {
     content: "";
     position: fixed; inset: 0; z-index: -1; pointer-events: none;
@@ -89,8 +90,35 @@
       radial-gradient(1.3px 1.3px at 35% 38%, #fff, transparent),
       radial-gradient(1.7px 1.7px at 95% 8%, #fff, transparent);
   }
-  @media (prefers-color-scheme: dark) { body::before { opacity: .8; } }
 
+  /* ---------- 背景：星星 + 缓慢漂移的星云，全部 CSS 动画，零请求 ---------- */
+  /* 两层星：body::before 是星星，.nebula 是背后的彩色光斑（比星星更淡） */
+  .nebula { position: fixed; inset: -20%; z-index: -2; pointer-events: none; opacity: 0;
+            background:
+              radial-gradient(38% 34% at 22% 28%, rgba(120,150,255,.30), rgba(120,150,255,0) 70%),
+              radial-gradient(32% 30% at 78% 24%, rgba(255,190,120,.22), rgba(255,190,120,0) 70%),
+              radial-gradient(40% 36% at 62% 78%, rgba(170,120,255,.22), rgba(170,120,255,0) 70%),
+              radial-gradient(28% 26% at 12% 78%, rgba(120,230,200,.18), rgba(120,230,200,0) 70%);
+            animation: drift 46s ease-in-out infinite alternate; }
+  /* 深色模式下星星 + 星云都点亮；浅色下只留极淡的暖色星云，免得干扰米色背景 */
+  @media (prefers-color-scheme: dark) {
+    .nebula { opacity: .9; }
+    body::before { opacity: .9; animation: twinkle 5.5s ease-in-out infinite; }
+  }
+  @media (prefers-color-scheme: light) {
+    .nebula { opacity: .5; filter: saturate(.7); }
+  }
+  /* 星云整体缓慢漂移 + 呼吸 */
+  @keyframes drift {
+    0%   { transform: translate3d(-1.5%, -1%, 0) scale(1); }
+    50%  { transform: translate3d(1.5%, 1.5%, 0) scale(1.06); }
+    100% { transform: translate3d(-1%, 1%, 0) scale(1.02); }
+  }
+  /* 星星明暗闪动 */
+  @keyframes twinkle {
+    0%, 100% { opacity: .55; }
+    50%      { opacity: .95; }
+  }
   main { display: flex; flex-direction: column; align-items: center; gap: 32px; text-align: center; }
 
   /* 校徽：白底圆盘 + 旋转文字环 + 不转的中心奶龙，外面一圈进度条 */
@@ -125,14 +153,26 @@
   .petting .pet-face { animation: nudge .5s ease-out; }
   .petting .progress .bar { stroke: var(--warn); }
   .petting .status { color: var(--warn); }
+  /* 恢复态：绿色闪一下，表示「重新开始计时了」 */
+  .resuming .badge::before { background: #d9f5e4; }
+  .resuming .halo { opacity: 1; transform: scale(1);
+                    background: radial-gradient(circle at center, rgba(31,157,85,.34) 0 46%, rgba(31,157,85,0) 72%); }
+  .resuming .progress .bar { stroke: var(--go); }
 
   /* 提示条：默认藏在下面，点奶龙时上浮 */
   .pet-msg { display: flex; flex-direction: column; align-items: center; gap: 2px;
              height: 0; opacity: 0; overflow: hidden; transform: translateY(-6px);
              transition: opacity .25s, transform .25s, height .25s; }
   .petting .pet-msg { height: auto; opacity: 1; transform: none; }
-  .pet-msg b { font-size: clamp(15px, 4vw, 18px); font-weight: 800; color: #e0483d; letter-spacing: .04em; }
+  .pet-msg b { font-size: clamp(15px, 4vw, 18px); font-weight: 800; color: var(--warn); letter-spacing: .04em; }
   .pet-msg span { font-size: 13px; color: var(--muted); }
+  /* 恢复提示：绿色 */
+  .resume-msg { display: flex; flex-direction: column; align-items: center; gap: 2px;
+                height: 0; opacity: 0; overflow: hidden; transform: translateY(-6px);
+                transition: opacity .25s, transform .25s, height .25s; }
+  .resuming .resume-msg { height: auto; opacity: 1; transform: none; }
+  .resume-msg b { font-size: clamp(15px, 4vw, 18px); font-weight: 800; color: var(--go); letter-spacing: .04em; }
+  .resume-msg span { font-size: 13px; color: var(--muted); }
 
   .copy { display: flex; flex-direction: column; align-items: center; gap: 10px; transition: opacity .3s, transform .3s; }
   h1 { font-size: clamp(26px, 7vw, 40px); font-weight: 800; letter-spacing: .12em; padding-left: .12em; }
@@ -156,6 +196,17 @@
     transition: color .2s, text-decoration-color .2s, opacity .3s;
   }
   .about-btn:hover, .about-btn:focus-visible { color: var(--fg); text-decoration-color: currentColor; }
+
+  /* 左下角 GitHub 图标，跟「关于」对称。内联 SVG，不额外发请求 */
+  .gh-btn {
+    position: fixed; left: max(8px, env(safe-area-inset-left)); bottom: max(8px, env(safe-area-inset-bottom));
+    display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%;
+    color: var(--muted); text-decoration: none; opacity: .8; overflow: hidden;
+    transition: color .2s, opacity .2s, background-color .2s, transform .3s;
+  }
+  .gh-btn:hover, .gh-btn:focus-visible { color: var(--fg); opacity: 1; background: var(--track); transform: rotate(-10deg) scale(1.1); }
+  /* 图标本体撑满圆形，居中不偏 */
+  .gh-btn svg { display: block; width: 23px; height: 23px; }
   .about {
     width: min(360px, calc(100vw - 32px)); margin: auto; padding: 0; border: 0; border-radius: 16px;
     background: var(--card); color: var(--fg); box-shadow: 0 18px 50px rgba(0, 0, 0, .25);
@@ -179,12 +230,14 @@
 
   .run .badge { animation: pop .7s cubic-bezier(.34, 1.56, .64, 1) backwards; }
   .run .core { animation: breathe 1.8s ease-in-out .7s infinite; }
-  .run .bar { animation: fill var(--delay) linear forwards; }
   .run .copy { animation: rise .5s ease-out .15s backwards; }
+  /* 进度条独立用 .timing 类：恢复时只重置它，徽章不会跟着重播入场动画 */
+  .timing .bar { animation: fill var(--delay) linear forwards; }
   .paused .bar { animation-play-state: paused; }
   .leaving .wrap { transform: scale(1.18); opacity: 0; }
   .leaving .copy { opacity: 0; transform: translateY(8px); }
   .leaving .about-btn { opacity: 0; }
+  .leaving .gh-btn { opacity: 0; }
 
   @keyframes pop { from { transform: scale(.55) rotate(-25deg); opacity: 0; } }
   @keyframes breathe { 50% { transform: scale(1.03); } }
@@ -196,11 +249,14 @@
 
   @media (prefers-reduced-motion: reduce) {
     .run .badge, .run .core, .run .copy, .dots i, .about[open], .petting .pet-face { animation: none; }
-    .wrap, .copy, .halo, .pet-msg { transition: none; }
+    .wrap, .copy, .halo, .pet-msg, .resume-msg, .gh-btn { transition: none; }
+    /* 动态背景全关：既省电，也尊重「减少动态效果」的系统设置 */
+    .nebula, body::before { animation: none !important; }
   }
 </style>
 </head>
 <body>
+<div class="nebula" aria-hidden="true"></div>
 <main>
   <div class="wrap">
     <div class="badge">
@@ -224,13 +280,23 @@
     <p class="status">奶龙正在护送你前往 <strong id="to">广州大学</strong><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span></p>
     <p class="pet-msg" id="pet-msg" role="status" aria-live="polite">
       <b>奶龙被摸头了！</b>
-      <span id="pet-sub">倒计时已暂停 · 再点一下继续出发</span>
+      <span id="pet-sub">倒计时已暂停 · 再点一下重新计时</span>
+    </p>
+    <p class="resume-msg" id="resume-msg" role="status" aria-live="polite">
+      <b>出发！计时重新开始</b>
+      <span id="resume-sub">奶龙说：这次要看完整动画哦</span>
     </p>
     <p class="hint" id="hint">立即前往</p>
     <noscript><p class="hint"><a href="https://www.gzhu.edu.cn/">没有自动跳转？点这里</a></p></noscript>
   </div>
 </main>
 <button class="about-btn" id="about-btn" type="button" hidden>关于</button>
+<!-- 左下角 GitHub 图标（内联 SVG，不额外发请求） -->
+<a class="gh-btn" href="https://github.com/Thomas455/nailong-university" target="_blank" rel="noopener"
+   aria-label="在 GitHub 上查看本站源码">
+  <!-- GitHub mark，取自官方 simple-icons（CC0-1.0） -->
+  <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+</a>
 <dialog class="about" id="about" aria-labelledby="about-title">
   <div class="about-body">
     <h2 id="about-title">关于本站</h2>
@@ -247,14 +313,18 @@
 
   const stay = new URLSearchParams(location.search).has('stay'); // 演示用：不跳转，循环播放
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const DELAY = reduce ? 1200 : 2600; // 入场动画 + 停留：进度条走到头的时刻（ms）
-  const EXIT = reduce ? 0 : 450;      // 离场动画时长，和 CSS 里 .wrap 的 transition 一致
-  const BUFFER = 80;                  // 余量：等离场动画的最后一帧真正画完再跳
-  const TOTAL = DELAY + EXIT;         // ← 改这几个常量即可调整「动画播完才跳转」的节奏
-  const SPIN = 4000;                  // 文字环转一圈（ms）
+
+  // ---- 时序常量 ----
+  // 进度条走满 = DELAY + EXIT（约 5.45 秒），之后只留 BUFFER 等最后一帧画完就跳，中间没有空档。
+  const DELAY  = reduce ? 1200 : 5000; // 入场动画 + 停留（ms）—— 进度条走完约 5 秒
+  const EXIT   = reduce ? 0   : 450;   // 离场（放大淡出）时长，和 CSS .wrap 的 transition 一致
+  const BUFFER = 80;                   // 余量：等最后一帧画完再跳
+  const TOTAL  = DELAY + EXIT;         // 进度条走满的时刻 = 跳转时刻
+  const SPIN   = 4000;                 // 文字环转一圈（ms）
+  const RESUME_FLASH = 620;            // 恢复时绿色闪一下的时长
 
   const body = document.body;
-  body.style.setProperty('--delay', TOTAL + 'ms'); // 进度条正好在跳转那一刻走满
+  body.style.setProperty('--delay', TOTAL + 'ms');
   if (stay) document.getElementById('hint').textContent += '（演示模式，不会真的跳转）';
 
   // 动画期间先把目标页面预热，避免跳过去时白屏一下
@@ -290,42 +360,63 @@
     document.title = document.getElementById('title').textContent;
   });
 
-  let timer, leaving, deadline, remaining, petting;
+  let timer, leaving, deadline, petting, flashTimer;
 
   function arm(ms) {
     deadline = performance.now() + ms;
     timer = setTimeout(() => leave('auto'), ms);
   }
 
-  // 暂停：记下还剩多久，停掉计时器并冻住进度条
+  // 重新开始计时：把进度条动画从头播一遍（只影响 .timing，徽章不会重播入场）
+  function restartTiming() {
+    body.classList.remove('timing');
+    void body.offsetWidth;   // 强制回流，让动画能重新触发
+    body.classList.add('timing');
+  }
+
+  // 点奶龙：暂停。不记剩余时间 —— 下次恢复是「重新开始计时」，不是接着数
   function pause() {
     if (leaving || petting) return;
     petting = true;
     clearTimeout(timer);
-    remaining = Math.max(0, deadline - performance.now());
     body.classList.add('paused', 'petting');
+    hintEl.textContent = '已暂停';
   }
 
+  // 再点一次：进度条立刻清零重来 + 绿色闪一下
   function unpause() {
-    if (!petting) return;
+    if (!petting || leaving) return;
     petting = false;
-    body.classList.remove('petting');
-    if (leaving) return;
-    body.classList.remove('paused');
-    arm(remaining);           // 从暂停处继续，而不是重头开始
+    hintEl.textContent = '重新开始计时…';
+
+    // 先重置进度条再撤 paused：反过来的话，进度条会在绿闪那 620ms 里继续走一段
+    restartTiming();
+    body.classList.remove('petting', 'paused');
+
+    body.classList.add('resuming');            // 绿光一闪
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(function () {
+      body.classList.remove('resuming');        // 闪完撤掉，回到常态
+      hintEl.textContent = hintIdle;
+      if (leaving) return;
+      arm(DELAY);                              // ← 重新计时：完整 DELAY
+    }, RESUME_FLASH);
   }
 
   function start() {
     leaving = false;
     petting = false;
-    body.classList.remove('run', 'leaving', 'paused', 'petting');
-    hintEl.textContent = hintIdle;   // 复位文案
+    clearTimeout(flashTimer);
+    body.classList.remove('run', 'leaving', 'paused', 'petting', 'resuming');
+    hintEl.textContent = hintIdle;
     void body.offsetWidth; // 重新触发 CSS 动画
     body.classList.add('run');
+    restartTiming();      // 进度条从头开始
     if (ring) ring.playbackRate = 1;
     arm(DELAY);
   }
 
+  // 计时走完 → 放大淡出 → 稍等 → 真正跳转
   function leave(reason) {
     if (leaving) return;
     leaving = true;
@@ -341,23 +432,17 @@
         if (k < 1) requestAnimationFrame(speedUp);
       });
     }
-    // 等离场动画播完（EXIT + BUFFER）才真正跳转；演示模式下原地重播
-    setTimeout(stay ? start : redirect, stay ? EXIT + 600 : EXIT + BUFFER);
+    // 离场动画播完（EXIT + BUFFER）立刻跳；演示模式下原地重播
+    setTimeout(stay ? start : redirect, EXIT + BUFFER);
   }
 
-  // 摸奶龙：第一次暂停，再点继续。没暂停就暂停，别自己跳走
+  // 摸奶龙：第一次暂停（红），再点重新计时（绿）
   petBtn.addEventListener('click', () => {
     if (leaving) return;
-    if (petting) {
-      unpause();
-      hintEl.textContent = hintIdle;
-      return;
-    }
+    if (petting) { unpause(); return; }
     pause();
     petCount++;
     window._hmt.push(['_trackEvent', 'pet', 'tap', String(petCount)]);
-    // 暂停时把状态行和提示行一起改掉，免得还写着「立即前往」自相矛盾
-    hintEl.textContent = '已暂停';
     if (petCount === 5) {
       petSub.textContent = '奶龙说：按 c 再按 y，有彩蛋';
     }
@@ -382,25 +467,28 @@
     }, 60);
   }
 
-  // 打开「关于」时暂停倒计时和进度条，关闭后从剩余时间继续
+  // 打开「关于」时暂停倒计时和进度条，关闭后从剩余时间继续（「关于」是接着数，摸奶龙是重新数）
+  let aboutLeft = 0;
   aboutBtn.addEventListener('click', () => {
     if (leaving || petting) return;
     clearTimeout(timer);
-    remaining = Math.max(0, deadline - performance.now());
+    aboutLeft = Math.max(0, deadline - performance.now());
     body.classList.add('paused');
     about.showModal();
   });
   about.addEventListener('close', () => {
     body.classList.remove('paused');
-    if (!leaving) arm(remaining);
+    if (!leaving) arm(aboutLeft);
   });
   about.addEventListener('click', e => { if (e.target === about) about.close(); }); // 点遮罩关闭
 
-  // 点页面别处 / 按键 = 立即跳转。但点在奶龙或「关于」上不算
+  // 点页面别处 / 按键 = 立即跳转。但点在奶龙、「关于」、GitHub 图标上都不算
   const IGNORED_KEYS = ['Tab', 'Shift', 'Control', 'Alt', 'Meta'];
+  const ghBtn = document.querySelector('.gh-btn');
   function skip(e) {
     if (about.open || leaving) return;
     if (petBtn.contains(e.target) || aboutBtn.contains(e.target)) return;
+    if (ghBtn && ghBtn.contains(e.target)) return;   // 点 GitHub 图标是去 GitHub，不是跳转
     if (e.type === 'keydown' && IGNORED_KEYS.includes(e.key)) return;
     leave('skip');
   }
