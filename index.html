@@ -1,5 +1,4 @@
 <!doctype html>
-
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
@@ -9,15 +8,15 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="宇宙奶龙大学">
 <meta property="og:description" content="奶龙正在护送你前往宇宙奶龙大学">
-
+<!-- 换域名时改这里（必须是绝对地址，微信抓不到图就不显示卡片） -->
 <meta property="og:image" content="https://xn--psszg58cydsdq780c.com/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-
+<!-- 页签图标。别再加 512x512 的 favicon.png，浏览器会去下那张 93KB 的图 -->
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="apple-touch-icon" href="favicon.png">
-
+<!-- 百度统计。本页 3 秒后就跳走，脚本必须最早加载，否则统计不到 -->
 <link rel="dns-prefetch" href="//hm.baidu.com">
 <link rel="preconnect" href="https://hm.baidu.com" crossorigin>
 <script>
@@ -33,7 +32,7 @@
     s.parentNode.insertBefore(hm, s);
   })();
 </script>
-
+<!-- 资源用相对路径，别改成 /xxx（双击本地打开会找不到） -->
 <link rel="preload" as="image" type="image/webp" href="core.webp" fetchpriority="high">
 <noscript><meta http-equiv="refresh" content="3;url=https://www.gzhu.edu.cn/"></noscript>
 <style>
@@ -97,8 +96,7 @@
   .wrap { transition: transform .45s cubic-bezier(.5, 0, .75, 0), opacity .45s ease-in; }
   .badge { position: relative; width: var(--size); aspect-ratio: 1; }
   .badge::before { content: ""; position: absolute; inset: 1.4%; border-radius: 50%; background: #fff; }
-  /* 奶龙是 <img>，文字环是内联 <svg>，两个都要绝对定位铺满整个徽章。
-     内联 svg 会带默认的 inline 基线空隙，absolute 一并解决。 */
+  /* 奶龙和内联 svg 都要绝对定位铺满徽章 */
   .badge img, .badge .ring { position: absolute; inset: 0; width: 100%; height: 100%; }
   .progress { position: absolute; inset: -5.5%; width: 111%; height: 111%; transform: rotate(-90deg); overflow: visible; }
   .progress circle { fill: none; stroke-width: 1.1; stroke-linecap: round; }
@@ -177,7 +175,7 @@
         <circle class="track" cx="50" cy="50" r="49"/>
         <circle class="bar" cx="50" cy="50" r="49" pathLength="100"/>
       </svg>
-
+      <!-- 奶龙在前、文字环在后，环才会压在它身上 -->
       <img class="core" src="core.webp" alt="" width="720" height="720" fetchpriority="high">
       <svg class="ring" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 720" width="720" height="720" role="img" aria-label="宇宙奶龙大学"><g font-family="Microsoft YaHei, PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="32" font-weight="800" text-anchor="middle"><g transform="rotate(0.0 360 360)"><text x="360" y="119.2" fill="#3a2c00">宇</text></g><g transform="rotate(10.2857 360 360)"><text x="360" y="119.2" fill="#3a2c00">宙</text></g><g transform="rotate(20.5714 360 360)"><text x="360" y="119.2" fill="#3a2c00">奶</text></g><g transform="rotate(30.8571 360 360)"><text x="360" y="119.2" fill="#3a2c00">龙</text></g><g transform="rotate(41.1429 360 360)"><text x="360" y="119.2" fill="#3a2c00">大</text></g><g transform="rotate(51.4286 360 360)"><text x="360" y="119.2" fill="#3a2c00">学</text></g><g transform="rotate(61.7143 360 360)"><text x="360" y="119.2" fill="#d99a00">·</text></g><g transform="rotate(72.0 360 360)"><text x="360" y="119.2" fill="#3a2c00">宇</text></g><g transform="rotate(82.2857 360 360)"><text x="360" y="119.2" fill="#3a2c00">宙</text></g><g transform="rotate(92.5714 360 360)"><text x="360" y="119.2" fill="#3a2c00">奶</text></g><g transform="rotate(102.8571 360 360)"><text x="360" y="119.2" fill="#3a2c00">龙</text></g><g transform="rotate(113.1429 360 360)"><text x="360" y="119.2" fill="#3a2c00">大</text></g><g transform="rotate(123.4286 360 360)"><text x="360" y="119.2" fill="#3a2c00">学</text></g><g transform="rotate(133.7143 360 360)"><text x="360" y="119.2" fill="#d99a00">·</text></g><g transform="rotate(144.0 360 360)"><text x="360" y="119.2" fill="#3a2c00">宇</text></g><g transform="rotate(154.2857 360 360)"><text x="360" y="119.2" fill="#3a2c00">宙</text></g><g transform="rotate(164.5714 360 360)"><text x="360" y="119.2" fill="#3a2c00">奶</text></g><g transform="rotate(174.8571 360 360)"><text x="360" y="119.2" fill="#3a2c00">龙</text></g><g transform="rotate(185.1429 360 360)"><text x="360" y="119.2" fill="#3a2c00">大</text></g><g transform="rotate(195.4286 360 360)"><text x="360" y="119.2" fill="#3a2c00">学</text></g><g transform="rotate(205.7143 360 360)"><text x="360" y="119.2" fill="#d99a00">·</text></g><g transform="rotate(216.0 360 360)"><text x="360" y="119.2" fill="#3a2c00">宇</text></g><g transform="rotate(226.2857 360 360)"><text x="360" y="119.2" fill="#3a2c00">宙</text></g><g transform="rotate(236.5714 360 360)"><text x="360" y="119.2" fill="#3a2c00">奶</text></g><g transform="rotate(246.8571 360 360)"><text x="360" y="119.2" fill="#3a2c00">龙</text></g><g transform="rotate(257.1429 360 360)"><text x="360" y="119.2" fill="#3a2c00">大</text></g><g transform="rotate(267.4286 360 360)"><text x="360" y="119.2" fill="#3a2c00">学</text></g><g transform="rotate(277.7143 360 360)"><text x="360" y="119.2" fill="#d99a00">·</text></g><g transform="rotate(288.0 360 360)"><text x="360" y="119.2" fill="#3a2c00">宇</text></g><g transform="rotate(298.2857 360 360)"><text x="360" y="119.2" fill="#3a2c00">宙</text></g><g transform="rotate(308.5714 360 360)"><text x="360" y="119.2" fill="#3a2c00">奶</text></g><g transform="rotate(318.8571 360 360)"><text x="360" y="119.2" fill="#3a2c00">龙</text></g><g transform="rotate(329.1429 360 360)"><text x="360" y="119.2" fill="#3a2c00">大</text></g><g transform="rotate(339.4286 360 360)"><text x="360" y="119.2" fill="#3a2c00">学</text></g><g transform="rotate(349.7143 360 360)"><text x="360" y="119.2" fill="#d99a00">·</text></g></g></svg>
     </div>
@@ -278,13 +276,8 @@
     setTimeout(stay ? start : redirect, stay ? EXIT + 600 : EXIT + BUFFER);
   }
 
-  // 跳转前给统计脚本留一点时间。
-  // 本页总共只活 3 秒，而 hm.js 走外网实测要 1 秒以上；用户如果一进来就点掉，
-  // 跳转会在 0.7 秒左右发生，脚本还没加载完就被 location.replace 掐断，这次访问就丢了。
-  // 策略：保证「页面打开到真正跳转」至少经过 BUDGET 毫秒。
-  //   · 正常等完动画的（约 3.1 秒）已经远超预算 → 不额外等待，用户完全无感；
-  //   · 提前点击的 → 最多补等几百毫秒，把这次访问救回来。
-  // 被广告拦截插件挡掉（failed）时一秒都不等，绝不为了统计拖累用户。
+  // 跳转前给统计脚本留点时间：保证「打开到跳转」至少过 BUDGET 毫秒。
+  // 等完动画的（约 3.1s）早已超过预算，不会多等；提前点掉的才补等。被拦截就一秒不等。
   const BUDGET = 1200;
   function redirect() {
     const a = window.__analytics;

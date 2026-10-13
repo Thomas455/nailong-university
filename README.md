@@ -6,34 +6,39 @@
 **推荐 [Cloudflare Pages](#方案-acloudflare-pages推荐但要迁-ns) 或 [GitHub Pages](#方案-bgithub-pages不用动-ns最省事)，两个都不需要买服务器、也不需要 ICP 备案。**
 
 ```
-index.html                  部署用的页面（由 tools/index.template.html 构建生成，别直接改）
-tools/index.template.html   页面源文件 ← 要改文案/样式改这个
-tools/build_inline.py       构建：把 ring.svg 内联进 index.html
-ring.svg                    校徽外圈：旋转的「宇宙奶龙大学·」文字环（构建时会内联，不单独请求）
-core.webp / core.png        校徽中心：奶龙（站在文字环底下，所以只有上半身露出来）
-favicon.ico                 浏览器页签图标（16/32/48）
-favicon.png                 iOS / 安卓主屏图标（512×512）
+index.html                  页面本体 ← 改文案/样式直接改这个，没有构建步骤
+ring.svg                    文字环的原始文件（已内联进 index.html，页面不单独请求）
+core.webp / core.png        奶龙本体：页面用 webp，png 是无损原件
+favicon.ico                 浏览器页签图标（16/32/48，由 favicon.png 派生）
+favicon.png                 iOS / 安卓主屏图标（512×512，手工维护的源文件）
 og.png                      微信、QQ、Twitter 分享卡片图（1200×630）
 CNAME                       GitHub Pages 绑定自定义域名用（已填好 punycode）
-双手交叉站立.png            奶龙原图素材 ← 保留着，方便以后重做抠图
-tools/prepare_nailong.py    奶龙抠图 → core.png / core.webp / favicon.*
-tools/build_assets.py       文字环 ring.svg + 分享卡片 tools/og.html
+双手交叉站立.png            奶龙原始素材
+tools/prepare_nailong.py    抠图 → core.png / core.webp
+tools/build_assets.py       文字环 → ring.svg、分享卡片 → tools/og.html
+tools/build_favicon.py      favicon.png → favicon.ico（只读 png，不改它）
+tools/og.html               分享卡片的排版源文件
 tools/preview-core.png      抠图效果的白底预览
 ```
 
-从零重建全部资源（三步，顺序别换）：
+> **想改 ring.svg 的文字？** 直接编辑 `index.html` 里那段 `<svg class="ring">`（35 个
+> `<text>`，每个字转一个角度）。`ring.svg` 只是留个底，改完两边对不上也没关系。
+
+重新生成图片资源（改图之后跑）：
 
 ```powershell
-python tools/prepare_nailong.py    # 抠图 → core.* / favicon.*
-python tools/build_assets.py       # 文字环 → ring.svg
-python tools/build_inline.py       # 内联 → index.html
+python tools/prepare_nailong.py    # 从原始素材重新抠图 → core.png / core.webp
+python tools/build_assets.py       # 重新生成 ring.svg 和 og.html 排版
+python tools/build_favicon.py      # 从 favicon.png 派生 favicon.ico
 ```
 
-本地已经是一个初始化好的 git 仓库（分支 `main`，首次提交已完成），推送即可发布：
+⚠️ **`prepare_nailong.py` 会重写 `core.png` / `core.webp` / `favicon.png`。**
+如果你手工改过 `favicon.png`，别跑第一条（或者跑完再改回来）。
+
+本地已经是一个初始化好的 git 仓库（分支 `main`），推送即可发布：
 
 ```powershell
-git remote add origin https://github.com/<你的用户名>/nailong-university.git
-git push -u origin main
+git push
 ```
 
 ---
@@ -60,22 +65,21 @@ git push -u origin main
 **只多 944 字节，就省掉一整个往返。** 因为 SVG 是纯文本（3,584 B），
 gzip 后仅 519 B，内联进同一个文件几乎不增体积。
 
-### 做了什么②：把 HTML 注释从产物里剥掉
+### 做了什么②：注释保持简短
 
-模板里的注释是**写给人看的文档**，没必要让每个访客下载一遍。实测：
+注释是给人看的，但每个访客都要跟着下载，所以写得很短：
 
 | | 裸大小 | gzip 后 |
 | --- | --- | --- |
-| 6 段注释合计 | 1,593 B | **1,537 B** |
-| 整页（去注释前） | 24,757 B | 8,344 B |
-| **整页（去注释后）** | **18,348 B** | **6,709 B** |
+| 精简前的注释（6 段） | 1,593 B | 1,537 B |
+| 现在（5 段，每段 28~56 字符） | 199 B | **~190 B** |
+| **整页** | **18,240 B** | **6,674 B** |
 
-**注释占了页面的 ~20%**（gzip 后）。现在注释只存在于
-`tools/index.template.html`，构建时自动剥离 —— 文档一个字没少，
-访客少下 1.6KB。
+比原来那 6 段长篇大论省了约 1.3KB。注释只写在真正需要提醒的地方
+（换域名要改哪、图片路径别加 `/`、奶龙和文字环的叠放顺序）。
 
-剥离只处理 `<!-- -->`。CSS 的 `/* */` 和 JS 一律不碰：那些地方动刀风险大
-（比如 `https://` 里的 `//` 就会被误伤），收益也小。
+CSS 里的 `/* */` 和 JS 注释都保留 —— 那些位置不处理，动刀风险大
+（比如 `https://` 里的 `//` 就会被误伤）。
 
 ### 为什么没内联奶龙图（这条是踩坑记录）
 
@@ -90,8 +94,12 @@ core.webp base64    20,780  →  混进 HTML 后 gzip 15,251   ← 只省 7%
 撑到 **46KB** —— 多传 15KB 只换一次往返，在 0.25s RTT 上不划算（多传 15KB 约 0.05s）。
 所以它继续用独立文件 + `<link rel=preload>` 提前加载。
 
-同理没内联 `favicon.ico`：5,727 B 的二进制，base64 后混在 HTML 里 gzip 仍有
-5,780 B，**比它本身还大**。
+### 也没内联 favicon（试过，亏了）
+
+内联成 data URI 后浏览器确实不再请求 `/favicon.ico`。但页面 gzip 从
+6.7KB 涨到 **13.2KB**，省下的那个请求**发生在渲染之后**，不挡首屏、
+不挡动画、不挡跳转，用户感觉不到。反过来它是个可缓存的独立文件，
+第二次访问不用重下；内联后每次都得跟着 HTML 重下。净亏，所以外联。
 
 ### 顺手修掉的一个浪费
 
@@ -106,25 +114,14 @@ core.webp base64    20,780  →  混进 HTML 后 gzip 15,251   ← 只省 7%
 现在只保留 `.ico`（内含 16/32/48 三档），`favicon.png` 只留给
 `apple-touch-icon`（仅在「添加到主屏幕」时才拉）。
 
-### 构建与自检
+### 现在没有构建步骤
 
-`index.html` 是**生成产物**，改页面要改 `tools/index.template.html` 再重跑：
+`index.html` 就是源文件，**直接双击打开就能看，直接改就能用**，
+不需要跑任何脚本。文字环已经内联在里面了（35 个 `<text>`，
+每个字转一个角度）。
 
-```powershell
-python tools/build_inline.py
-```
-
-脚本会自检并在出问题时以非零码退出（**自检不过就不写文件**，避免发布坏产物）：
-
-* 模板里有未登记的占位符 → 报错
-* 内联的 svg 缺 `class="ring"`（会导致定位和旋转动画失效）→ 报错
-* 首屏资源引用与预期不符 → 报错
-* 产物里仍有 HTML 注释没剥干净 → 警告
-* 输出裸大小 / gzip 后大小（线上真实传输量）
-
-> 自检里也踩过两个坑，都修了：先剥掉 HTML 注释再找标签（否则注释里举例写的
-> `<link>` 会被当成真引用）；按整个标签判断 `rel`（原来用「前文 80 字符里有没有
-> apple-touch-icon」这种启发式，会把 `favicon.ico` 误判成延迟加载）。
+只有改图片时才需要跑 `tools/` 里的脚本 —— 那是"重新生成图片资源"，
+不是"构建页面"。
 
 ### 还想更快的话
 
@@ -477,19 +474,39 @@ DNSPod 给 `@` 和 `www` 各加一条 **A 记录**指向服务器公网 IP。
 
 ## 7. 改了东西怎么重新发布
 
-**改页面内容**（文案、样式、跳转目标）：改 `tools/index.template.html`，然后
+**改页面内容**（文案、样式、跳转目标、动画时长）：直接改 `index.html`，然后提交。
 
 ```powershell
-python tools/build_inline.py     # 重新生成 index.html
 git add -A
 git commit -m "改了 xxx"
 git push
 ```
 
-**只改图片**（换奶龙、换配色）：跑对应的生成脚本，再跑一次构建，然后提交。
+`index.html` 就是源文件，没有构建步骤，改完直接用。几个常改的地方：
 
-⚠️ **别直接改 `index.html`** —— 它是构建产物，下次跑 `build_inline.py` 会被覆盖。
-（`git diff` 里看到 `index.html` 有很大改动时，先确认是不是构建产生的。）
+| 想改什么 | 改哪儿 |
+| --- | --- |
+| 跳转到哪个学校 | `const TARGET = '...'` |
+| 文案里的校名 | `const NAME = '...'` |
+| 动画播多久才跳 | `const DELAY`（停留）、`const EXIT`（离场） |
+| 配色 | `<style>` 里 `:root` 的 CSS 变量 |
+| 文字环上的字 | 内联的 `<svg class="ring">` 里的 35 个 `<text>` |
+
+**改图片**（换奶龙图、改 favicon）：
+
+```powershell
+# 手工改 favicon.png 之后：
+python tools/build_favicon.py      # 派生 favicon.ico
+
+# 换了素材 双手交叉站立.png 之后（会重写 core.* 和 favicon.png）：
+python tools/prepare_nailong.py
+python tools/build_assets.py
+python tools/build_favicon.py
+git add -A && git commit -m "换了图" && git push
+```
+
+⚠️ `prepare_nailong.py` 会**重写** `core.png` / `core.webp` / `favicon.png`。
+手工改过 `favicon.png` 就别跑它。
 
 GitHub Pages 和 Cloudflare Pages 都会在推上去之后自动重新发布，一般 1 分钟内生效。
 
