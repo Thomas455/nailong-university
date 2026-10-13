@@ -37,8 +37,14 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<!-- 页签图标只声明 favicon.ico（5.7KB，内含 16/32/48 三档）。
-     不要再加一句 <link rel="icon" sizes="512x512" href="favicon.png">
+<!-- 页签图标走独立文件（favicon.ico，5.7KB，内含 16/32/48 三档）。
+     试过把它内联成 data URI，实测是亏的：页面 gzip 从 6.7KB 涨到 13.2KB，
+     省下的却只是 /favicon.ico 这一次请求 —— 而那个请求发生在渲染之后，
+     不挡首屏、不挡动画、不挡跳转，用户根本感觉不到；反过来它还是个可缓存的
+     独立文件，第二次访问不用重下，内联后却每次都得跟着 HTML 重下。
+     结论：ring.svg 内联（渲染必需），favicon 外联。
+
+     ⚠️ 不要再加 <link rel="icon" sizes="512x512" href="favicon.png">
      —— 浏览器可能就此去下那张 512×512 的 PNG（93KB！）当页签图标，纯浪费。
      favicon.png 只留给 apple-touch-icon（「添加到主屏幕」时才拉）。 -->
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">

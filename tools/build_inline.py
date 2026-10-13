@@ -29,8 +29,15 @@ GitHub Pages 只提供 HTTP/1.1，没有多路复用，每个资源都要单独�
 同理不内联 favicon.ico：5,727 字节的二进制，base64 后混在 HTML 里 gzip 仍有
 5,780 字节，比它本身还大 —— 内联纯亏，保留文件引用。
 
-净效果：首屏 3 个请求 → 2 个，传输量基本不变（+944 B 换一次往返），
-再靠剥注释把 gzip 后压回 ~6.7KB。
+为什么不内联 favicon.ico（试过，亏了）
+-------------------------------------
+内联成 data URI 后浏览器确实不再请求 /favicon.ico，首屏请求 2 → 1。
+但：页面 gzip 从 6.7KB 涨到 13.2KB，而省下的那个请求发生在渲染之后，
+不挡首屏、不挡动画、不挡跳转 —— 用户感觉不到。反过来它是个可缓存的独立文件，
+第二次访问不用重下；内联后每次都得跟着 HTML 重下。**净亏，所以外联。**
+
+净效果：首屏 3 个请求 → 2 个（html + core.webp），传输量基本不变（+944 B 换一次往返），
+再靠剥注释把 gzip 压到 ~6.7KB。
 
 跑法
 ----
@@ -56,12 +63,13 @@ ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE = ROOT / "tools" / "index.template.html"
 OUTPUT = ROOT / "index.html"
 RING_SVG = ROOT / "ring.svg"
+FAVICON_ICO = ROOT / "favicon.ico"
 
 # 模板里允许出现的占位符白名单（出现别的就报错，防止手滑写错名字）
 PLACEHOLDERS = {"RING_SVG"}
 
 # 首屏预期要请求的本地文件（相对 index.html）。
-# 除了 favicon.png / og.png（都不是首屏需要），其余都该出现在这个列表里。
+# favicon.png / og.png 不算首屏：前者只有「添加到主屏幕」才拉，后者只有爬虫拉。
 EXPECTED_REQUESTS = {"core.webp", "favicon.ico"}
 
 
