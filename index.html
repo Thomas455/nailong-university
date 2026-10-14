@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>宇宙奶龙大学</title>
 <meta name="description" content="奶龙正在护送你前往宇宙奶龙大学。">
+<!-- 本站只做深色一套，手机浏览器顶栏也跟着变深，不会出现「深色页面配白色顶栏」 -->
+<meta name="theme-color" content="#080b1a">
 <meta property="og:type" content="website">
 <meta property="og:title" content="宇宙奶龙大学">
 <meta property="og:description" content="奶龙正在护送你前往宇宙奶龙大学">
@@ -36,26 +38,19 @@
 <link rel="preload" as="image" type="image/webp" href="core.webp" fetchpriority="high">
 <noscript><meta http-equiv="refresh" content="3;url=https://www.gzhu.edu.cn/"></noscript>
 <style>
+  /* 只做深色一套。color-scheme 固定 dark，这样滚动条、表单控件、
+     <dialog> 的默认配色也跟着走，不会出现「深色页面配浅色控件」。 */
   :root {
-    --bg: #fffbef;
-    --fg: #3a2c00;
-    --muted: #8f7a45;
+    --bg: #080b1a;
+    --fg: #eef1ff;
+    --muted: #8b93b8;
     --ink: #fece0e;
-    --warn: #e0483d;   /* 暂停态：红 */
-    --go: #1f9d55;     /* 恢复态：绿 */
-    --track: rgba(254, 206, 14, .22);
-    --card: #ffffff;
+    --warn: #ff6b60;   /* 暂停态：红（深色底上提亮，保证对比） */
+    --go: #3ddc84;     /* 恢复态：绿（同上） */
+    --track: rgba(254, 206, 14, .18);
+    --card: #141a2e;
     --size: min(64vw, 44vh, 340px);
-    color-scheme: light dark;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #080b1a;
-      --fg: #eef1ff;
-      --muted: #8b93b8;
-      --track: rgba(254, 206, 14, .18);
-      --card: #141a2e;
-    }
+    color-scheme: dark;
   }
 
   * { box-sizing: border-box; margin: 0; }
@@ -125,13 +120,9 @@
   /* 第 3 层：星星压在磨砂玻璃之上，所以 twinkle 时不会被糊掉 */
   body::before { z-index: -1; opacity: 0; }
 
-  @media (prefers-color-scheme: dark) {
-    .flow i { opacity: .8; }              /* 深色下压暗一点，别太艳 */
-    body::before { opacity: .9; animation: twinkle 4s ease-in-out infinite; }
-  }
-  @media (prefers-color-scheme: light) {
-    .flow i { opacity: .78; filter: saturate(.85); }   /* 浅色下稍淡，不干扰阅读 */
-  }
+  /* 光斑亮度和星星闪烁：只有深色一套，直接写死 */
+  .flow i { opacity: .8; }
+  body::before { opacity: .9; animation: twinkle 4s ease-in-out infinite; }
 
   /* 光斑游动：位移 + 缩放，都在 GPU 上跑（transform 不触发重排） */
   @keyframes flow1 { 0%,100% { transform: translate3d(0,0,0) scale(1); }
@@ -219,22 +210,19 @@
     display: flex; align-items: center; justify-content: center;
     padding: 9px 18px; border-radius: 14px; text-align: center;
     font-size: clamp(13px, 3.6vw, 15px); font-weight: 600; line-height: 1.6;
-    color: #2a2000;                       /* 固定深色，不跟随主题，保证对比 */
-    background: #fffdf5;                  /* 实色，不用半透明 */
-    border: 1px solid rgba(254, 206, 14, .45);
-    box-shadow: 0 6px 22px rgba(60, 40, 0, .13);
+    color: var(--fg);
+    /* 比 --card 稍亮一档，否则在深色背景上糊成一片看不出是卡片 */
+    background: #1e2540;
+    border: 1px solid rgba(254, 206, 14, .38);
+    box-shadow: 0 6px 22px rgba(0, 0, 0, .5);
     cursor: pointer;
-    transition: transform .2s, box-shadow .2s, border-color .2s;
+    transition: transform .2s, box-shadow .2s, border-color .2s, background-color .2s;
   }
   .quote:empty { display: none; }          /* 没内容时整块不显示 */
-  .quote:hover { transform: translateY(-2px); border-color: var(--ink);
-                 box-shadow: 0 10px 28px rgba(60, 40, 0, .18); }
+  .quote:hover { transform: translateY(-2px); border-color: var(--ink); background: #252e4f;
+                 box-shadow: 0 10px 28px rgba(0, 0, 0, .6); }
   /* 换句子时淡入一下，比硬切自然 */
   .quote.on { animation: quoteIn .45s ease-out; }
-  @media (prefers-color-scheme: dark) {
-    .quote { color: #f4efe0; background: #1b2136; border-color: rgba(254, 206, 14, .32);
-             box-shadow: 0 6px 22px rgba(0, 0, 0, .45); }
-  }
 
   .copy { display: flex; flex-direction: column; align-items: center; gap: 10px; transition: opacity .3s, transform .3s; }
   h1 { font-size: clamp(26px, 7vw, 40px); font-weight: 800; letter-spacing: .12em; padding-left: .12em; }
