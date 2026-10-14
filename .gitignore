@@ -9,6 +9,9 @@
 __pycache__/
 *.pyc
 
+# tools/build_works_list.py --force 覆盖前留的备份，是本机临时的，不用进仓库
+works/*/list.txt.bak
+
 # IDE 配置（JetBrains / VS Code），跟站点无关，别提交
 .idea/
 .vscode/

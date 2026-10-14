@@ -28,6 +28,7 @@ CNAME                       GitHub Pages 绑定自定义域名用（已填好 pu
 tools/prepare_nailong.py    抠图 → core.png / core.webp
 tools/build_assets.py       文字环 → ring.svg、分享卡片 → tools/og.html
 tools/build_favicon.py      favicon.png → favicon.ico（只读 png，不改它）
+tools/build_works_list.py   扫描 works/ 生成 list.txt（能列目录、读修改时间）
 tools/og.html               分享卡片的排版源文件
 tools/preview-core.png      抠图效果的白底预览
 ```
@@ -337,18 +338,40 @@ src/管理学院（旅游学院·中法旅游学院）.webp      ← 注意是�
 * 列表**右下角「关闭」** → 翻回去，回到最初的展览馆网格
 
 作品放在 `works/学院名/` 下（25 个目录已经建好了，每个里面有个 `.gitkeep`）。
-命名有两种方式，**任选其一**：
+两种命名**混着用**，最终顺序是「先 list.txt 里的，再接数字命名的」：
 
-| 方式 | 怎么用 | 顺序 |
+| 来源 | 怎么用 | 顺序 |
 | --- | --- | --- |
-| 数字命名（省事） | `1.webp`、`2.webp`、`3.webp`…… | 编号**大的在上面**（新的在前） |
-| `list.txt`（保留原文件名） | 同目录放 `list.txt`，一行一个文件名 | 写在**下面的在上面**（当最新的） |
+| `list.txt`（优先） | 同目录放 `list.txt`，一行一个文件名 | 写在**下面的在上面**（当最新的） |
+| 数字命名（补充） | `1.webp`、`2.webp`、`3.webp`…… | 编号**大的在上面** |
 
-> 有 `list.txt` 就以它为准，没有才退回数字探测。
+两边都有的只显示一次，位置以 `list.txt` 为准。清单里**后缀可写可不写**
+（`奶龙打篮球` 会自动当成 `奶龙打篮球.webp`），`#` 开头当注释。
+
+> ⚠️ **既不是数字命名、又没写进 `list.txt` 的文件，页面上看不见。**
+> 因为静态站点拿不到目录列表（没有 `readdir`），页面只能靠约定去猜。
+> 随手命名的文件（`IMG_2026.jpg`、`未命名-3.webp`…）必须靠 `list.txt` 才能显示 ——
+> 下面那个脚本可以自动生成。
+
+#### 自动生成 list.txt
+
+```powershell
+python tools/build_works_list.py              # 只处理还没有 list.txt 的目录
+python tools/build_works_list.py --force      # 覆盖（旧的存成 list.txt.bak）
+python tools/build_works_list.py --dry-run    # 只预览
+python tools/build_works_list.py --convert    # 顺手把 jpg/png 转成 webp
+```
+
+本地脚本能做到页面做不到的两件事：**列目录** 和 **读文件修改时间**。
+所以它按修改时间**从旧到新**写入清单 —— 最新的落在最后一行，页面上就出现在第一个。
+
+> `--force` 覆盖前会把手写的清单备份成 `list.txt.bak`（已在 `.gitignore` 里）。
+> 重新扫描时 `.bak` 不会被当成作品。
 
 > **为什么不能自动列目录**：静态站点没有后端，拿不到目录列表。
 > 数字探测是并行发的（一批 12 个），所以通常一个往返就够 ——
 > 这套思路和 `notice.html` 读公告是同一个，见上面那节。
+> `list.txt` 和数字探测是**并行请求**的，所以有没有清单都不会变慢。
 >
 > 探测用 `HEAD` 请求省流量，但**有些静态托管不支持 HEAD**，那时会退回逐个 `GET`。
 > 好在 `works/` 里的图都很小（几十 KB）。
@@ -378,6 +401,7 @@ src/管理学院（旅游学院·中法旅游学院）.webp      ← 注意是�
 | 配色 | `index.html` 顶部 `:root` 里的 CSS 变量（子页面在 `assets/site.css`） |
 | 首页顶部语录 | 改 `1.txt`，一行一句 |
 | 学院名单/顺序 | `show.html` 里的 `COLLEGES` 数组 |
+| 学院作品 | 图片丢进 `works/学院名/`，跑 `tools/build_works_list.py` 生成清单 |
 | 公告内容 | `notice/` 里加 txt |
 | 文字环上的字 | `tools/build_assets.py` → `build_ring(text=...)`，重跑脚本 |
 | 奶龙的样子 | 换掉 `双手交叉站立.png`，重跑 `tools/prepare_nailong.py` |

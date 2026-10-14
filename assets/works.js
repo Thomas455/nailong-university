@@ -2,19 +2,21 @@
    宇宙奶龙大学 —— 学院作品列表的读取
 
    难点：静态站点没有后端，**没法列出目录**（没有 readdir 这种东西）。
-   所以只能靠约定，两种方式：
+   所以只能靠约定，两种来源**混合使用**：
 
-     方式一（省事）：把作品命名成 1.webp、2.webp、3.webp……
-                     页面从 1 开始并行探测，探测到断档就停。
-                     编号大的（新的）显示在上面。
-
-     方式二（想保留原文件名）：在学院目录里放一个 list.txt，
-                     一行一个文件名，例如：
+     来源一 list.txt（优先展示）：在学院目录里放一个 list.txt，一行一个文件名，
+                     例如：
                          奶龙在图书馆.webp
                          奶龙打篮球.webp
-                     页面按清单里的**倒序**显示（写在最后的在最上面 = 最新）。
+                     写在**下面**的更新 → 显示在上面。
 
-   有 list.txt 就以它为准，没有才退回数字探测。
+     来源二 数字命名（补充展示）：1.webp、2.webp、3.webp……
+                     页面从 1 开始并行探测，探测到断档就停。
+                     编号**大**的更新 → 显示在上面。
+
+   最终顺序：**先列 list.txt 里的，再接数字命名的**。
+   两边都有的（比如清单里写了 1.webp）只显示一次，以清单的位置为准 ——
+   这样「精心排序的放前面，随手丢进来的垫后面」。
    ============================================================================ */
 (function (global) {
   'use strict';
@@ -52,23 +54,31 @@
     }).catch(function () { return false; });
   }
 
-  // ---- 方式二：读 list.txt ----
+  // 用来判重的键：大小写不敏感，且忽略 .webp 后缀
+  // —— 清单里写「1」还是「1.webp」都算同一个文件
+  function key(file) {
+    return String(file).replace(/\.webp$/i, '').toLowerCase();
+  }
+
+  // ---- 来源一：读 list.txt。没有就返回空数组（不是 null，方便直接拼）----
   function fromList(base) {
     return grab(base + '/list.txt').then(function (txt) {
-      if (txt === null) return null;
+      if (txt === null) return [];
       var names = txt.replace(/^\uFEFF/, '')
         .split(/\r?\n/)
         .map(function (s) { return s.trim(); })
         .filter(function (s) { return s && s.charAt(0) !== '#'; });   // # 开头当注释
-      if (!names.length) return null;
-      // 清单里写在后面的更新 → 倒序，新的在上面
-      return names.reverse().map(function (n) {
-        return { file: n, url: base + '/' + encodeURIComponent(n) };
+      // 写在后面的更新 → 倒序，新的在上面
+      names.reverse();
+      return names.map(function (n) {
+        // 清单里没写后缀的，自动补 .webp（少打字，也不容易打错）
+        var name = /\.webp$/i.test(n) ? n : n + '.webp';
+        return { file: name, url: base + '/' + encodeURIComponent(name) };
       });
     });
   }
 
-  // ---- 方式一：并行探测 1.webp、2.webp…… ----
+  // ---- 来源二：并行探测 1.webp、2.webp…… ----
   function fromNumbers(base) {
     var hits = [];
 
@@ -95,24 +105,45 @@
       });
     }
 
-    return runBatch(1).then(function (list) {
-      // 编号大的（新的）在上面
-      list.sort(function (a, b) { return b.n - a.n; });
-      return list;
-    });
+    return runBatch(1);
   }
 
   /**
-   * 读一个学院的全部作品。
+   * 读一个学院的全部作品：list.txt 里的在前，数字命名的在后。
    * @param {string} collegeFile 学院名（用作目录名，和 src/ 的命名规则一致）
-   * @returns {Promise<Array<{file:string, url:string}>>} 已排好序，新的在前
+   * @returns {Promise<Array<{file:string, url:string}>>} 已排好序
    */
   function loadWorks(collegeFile) {
     var base = 'works/' + encodeURIComponent(collegeFile);
-    return fromList(base).then(function (list) {
-      if (list && list.length) return list;
-      return fromNumbers(base);
-    });
+
+    // 两个来源并行发，别串行等 —— 少一个往返
+    return Promise.all([fromList(base), fromNumbers(base)])
+      .then(function (both) {
+        var listed = both[0];
+        var numbered = both[1];
+
+        var seen = {};
+        var out = [];
+
+        // 先放清单里的（已按「新的在前」倒序）
+        listed.forEach(function (w) {
+          var k = key(w.file);
+          if (seen[k]) return;              // 清单自己写重了，去重
+          seen[k] = 1;
+          out.push(w);
+        });
+
+        // 再接编号文件里没被清单提到的，编号大的在前
+        numbered.sort(function (a, b) { return b.n - a.n; })
+          .forEach(function (w) {
+            var k = key(w.file);
+            if (seen[k]) return;            // 清单里已经有了，跳过
+            seen[k] = 1;
+            out.push(w);
+          });
+
+        return out;
+      });
   }
 
   global.NailongWorks = { loadWorks: loadWorks };
