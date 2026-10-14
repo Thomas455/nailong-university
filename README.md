@@ -9,7 +9,14 @@
 **推荐 [Cloudflare Pages](#方案-acloudflare-pages推荐但要迁-ns) 或 [GitHub Pages](#方案-bgithub-pages不用动-ns最省事)，两个都不需要买服务器、也不需要 ICP 备案。**
 
 ```
-index.html                  页面本体 ← 改文案/样式直接改这个，没有构建步骤
+index.html                  跳转页（页面上那个「回主页」房子图标去 home.html）
+home.html                   校园门户：四张卡片（展览馆 / 公告 / 两个占位）
+show.html                   奶龙展览馆：25 个学院展位
+notice.html                 网站公告：读 notice/ 里的 txt
+assets/site.css             三个子页面共用的样式（深色主题 + 流动背景）
+assets/site.js              共用脚本（插背景层、生成返回按钮）
+src/                        学院展位图片 ← 文件名必须和学院名一模一样
+notice/                     公告源文件（1.txt、2.txt……）
 ring.svg                    文字环的原始文件（已内联进 index.html，页面不单独请求）
 core.webp / core.png        奶龙本体：页面用 webp，png 是无损原件
 favicon.ico                 浏览器页签图标（16/32/48，由 favicon.png 派生）
@@ -17,6 +24,7 @@ favicon.png                 iOS / 安卓主屏图标（512×512，手工维护�
 og.png                      微信、QQ、Twitter 分享卡片图（1200×630）
 CNAME                       GitHub Pages 绑定自定义域名用（已填好 punycode）
 双手交叉站立.png            奶龙原始素材
+1.txt                       首页顶部随机语录的源文件（一行一句）
 tools/prepare_nailong.py    抠图 → core.png / core.webp
 tools/build_assets.py       文字环 → ring.svg、分享卡片 → tools/og.html
 tools/build_favicon.py      favicon.png → favicon.ico（只读 png，不改它）
@@ -228,10 +236,18 @@ python -m http.server 8801 --directory .
 
 * <http://127.0.0.1:8801/index.html?stay> —— **演示模式**，不跳转，动画循环播放
 * <http://127.0.0.1:8801/index.html> —— 真跳转，约 5.5 秒后离开
+* <http://127.0.0.1:8801/home.html> —— 校园门户（四张卡片）
+* <http://127.0.0.1:8801/show.html> —— 奶龙展览馆（25 个学院）
+* <http://127.0.0.1:8801/notice.html> —— 网站公告
 
 > 页面里所有资源都写成**相对路径**（`core.webp`，而不是 `/core.webp`），所以三种打开方式都正常：
 > 双击本地打开（`file://`）、部署在域名根目录、部署在子目录（如 `example.com/nailong/`）。
 > ⚠️ 别改回 `/core.webp` 这种根路径：双击打开时它会去找 `D:\core.webp`，页面上图片会全变成碎图标。
+>
+> ⚠️ **`show.html` 和 `notice.html` 必须用 http 方式预览**（方式二）。
+> 它们靠 `fetch` 读 `src/` 和 `notice/` 里的文件，而浏览器禁止 `file://` 下的
+> fetch（CORS 限制）。双击打开时这两个页面会显示「图片待补充」和空公告 —— 这是浏览器的
+> 安全策略，不是坏了。`index.html` / `home.html` 没有这个问题。
 
 ## 2. 动画与跳转时序（重点）
 
@@ -269,8 +285,52 @@ const DELAY = 8000;   // 8 秒后才开始离场
 
 * 点击页面任意处 / 按任意键 → 立即离场并跳转（不用等）；
 * 右下角「关于」→ 暂停倒计时和进度条，关掉后从剩余时间继续（防止用户看说明时被跳走）；
-* 键盘依次按 `c` `y` → 彩蛋，校名会变成「陈宇龙大学」；
 * 系统开了「减少动态效果」时，自动降级成 1.2 秒直达、不做动画。
+
+## 2.5 三个子页面
+
+首页正下方有个**房子图标**（`.home-btn`），点进 `home.html`，那里是校园门户：
+
+| 页面 | 做什么 | 内容从哪来 |
+| --- | --- | --- |
+| `home.html` | 四张卡片：奶龙展览馆 / 网站公告 / 校园活动（占位）/ 留言板（占位） | 写死在 HTML 里 |
+| `show.html` | 25 个学院的展位，竖直卡片，图片在上、院名在下 | `src/学院名.png` |
+| `notice.html` | 公告列表，**编号大的在上面**（新的在前） | `notice/N.txt` |
+
+三个页面共用 `assets/site.css` 和 `assets/site.js`，所以背景、配色、返回按钮
+完全一致，改一处全变。`index.html` **没有**引用它们 —— 那个页面要最快，
+样式全内联，多一个请求都不划算。**两边都改的时候记得手动同步。**
+
+### 展览馆的图片怎么放
+
+放进 `src/`，**文件名必须和学院名一模一样**（含全角括号）：
+
+```
+src/经济与统计学院.png
+src/法学院（律师学院）.png                     ← 全角括号，不是半角 ()
+src/管理学院（旅游学院·中法旅游学院）.png      ← 注意是「·」，不是「/」
+```
+
+> ⚠️ 「管理学院（旅游学院/中法旅游学院）」原名里有个**斜杠**，而斜杠在
+> Windows / macOS / Linux 上都不能做文件名。所以 `show.html` 里的 `COLLEGES`
+> 数组把它拆成了两个字段：`name`（卡片上显示，带斜杠）和 `file`
+> （图片文件名，斜杠换成 `·`）。要改这个学院的名字，两个字段一起改。
+
+找不到图片时显示学院首字占位，不会出现裂图。（早期版本用 `img.hidden = true`
+藏裂图，实测不行 —— 浏览器在脚本执行前就把裂图渲染了，现在改成给父级加 `.miss` 类。）
+
+### 公告怎么写
+
+在 `notice/` 里放 `1.txt`、`2.txt`、`3.txt`……，**第一行当标题，其余当正文**。
+
+* 编号**大的显示在上面**（4 在 1 上面）
+* 编号可以跳号，脚本容忍中间缺失（一批末尾连续缺 2 个才停）
+* 标题以 `[AI] ` 开头 → 卡片右下角自动加「此公告由 AI Agent 编写」
+* 正文用 `textContent` 渲染，**公告里写 `<script>` 也不会变成标签**（防注入）
+
+> 静态站点没法「列出目录」，所以只能一个个试。早期版本是**串行**探测，
+> 6 个文件 = 6 个往返，GitHub Pages 上（约 0.25s RTT）要白屏 1.5 秒。
+> 现在改成**一批 8 个并行**发，通常一个往返就够。
 
 ## 3. 想要改的地方
 
@@ -279,7 +339,10 @@ const DELAY = 8000;   // 8 秒后才开始离场
 | 跳转目标 | `index.html` 里 `const TARGET = 'https://www.gzhu.edu.cn/';` |
 | 文案里的校名 | `const NAME = '广州大学';` |
 | 停留/动画时长 | `DELAY`、`EXIT` |
-| 配色 | `index.html` 顶部 `:root` 里的 CSS 变量 |
+| 配色 | `index.html` 顶部 `:root` 里的 CSS 变量（子页面在 `assets/site.css`） |
+| 首页顶部语录 | 改 `1.txt`，一行一句 |
+| 学院名单/顺序 | `show.html` 里的 `COLLEGES` 数组 |
+| 公告内容 | `notice/` 里加 txt |
 | 文字环上的字 | `tools/build_assets.py` → `build_ring(text=...)`，重跑脚本 |
 | 奶龙的样子 | 换掉 `双手交叉站立.png`，重跑 `tools/prepare_nailong.py` |
 | 抠图边缘 | `tools/prepare_nailong.py` 里的 `S_LO` / `S_HI` 阈值，配合 `tools/preview-core.png` 调 |

@@ -247,6 +247,21 @@
   }
   .about-btn:hover, .about-btn:focus-visible { color: var(--fg); text-decoration-color: currentColor; }
 
+  /* 正下方「回主页」房子图标。和左下 GitHub、右下「关于」凑成三个角。 */
+  .home-btn {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    bottom: max(8px, env(safe-area-inset-bottom));
+    display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+    color: var(--muted); text-decoration: none; opacity: .8; overflow: hidden;
+    transition: color .2s, opacity .2s, background-color .2s, transform .3s;
+  }
+  .home-btn:hover, .home-btn:focus-visible {
+    color: var(--ink); opacity: 1; background: var(--track);
+    transform: translateX(-50%) translateY(-3px) scale(1.08);
+  }
+  .home-btn svg { display: block; width: 22px; height: 22px; }
+  .leaving .home-btn { opacity: 0; }
+
   /* 左下角 GitHub 图标，跟「关于」对称。内联 SVG，不额外发请求 */
   .gh-btn {
     position: fixed; left: max(8px, env(safe-area-inset-left)); bottom: max(8px, env(safe-area-inset-bottom));
@@ -301,7 +316,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     .run .badge, .run .core, .run .copy, .dots i, .about[open], .petting .pet-face { animation: none; }
-    .wrap, .copy, .halo, .pet-msg, .resume-msg, .gh-btn { transition: none; }
+    .wrap, .copy, .halo, .pet-msg, .resume-msg, .gh-btn, .home-btn { transition: none; }
     /* 动态背景全关：既省电，也尊重「减少动态效果」的系统设置 */
     .flow i, body::before { animation: none !important; }
   }
@@ -352,6 +367,17 @@
     <noscript><p class="hint"><a href="https://www.gzhu.edu.cn/">没有自动跳转？点这里</a></p></noscript>
   </div>
 </main>
+<!-- 正下方「回主页」入口：去 home.html（卡片导航页）。
+     和左下 GitHub、右下「关于」凑成三个角，所以放正中。 -->
+<a class="home-btn" href="home.html" aria-label="进入奶龙主页">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M3 10.5 12 3l9 7.5"/>
+    <path d="M5.5 9.5V20a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9.5"/>
+    <path d="M9.5 21v-5.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V21"/>
+  </svg>
+  <span class="sr">进入奶龙主页</span>
+</a>
 <button class="about-btn" id="about-btn" type="button" hidden>关于</button>
 <!-- 左下角 GitHub 图标（内联 SVG，不额外发请求） -->
 <a class="gh-btn" href="https://github.com/Thomas455/nailong-university" target="_blank" rel="noopener"

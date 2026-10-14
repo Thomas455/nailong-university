@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>奶龙展览馆 · 宇宙奶龙大学</title>
+<meta name="description" content="宇宙奶龙大学 25 个学院的展位。">
+<meta name="theme-color" content="#080b1a">
+<link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="apple-touch-icon" href="favicon.png">
+<link rel="stylesheet" href="assets/site.css">
+<style>
+  /* 展位：竖直长方形卡片（高 > 宽），上方图片 + 下方院名。
+     卡片整体锁 3:4 的竖版比例，列宽一变高度自动跟着变，网格不会被撑歪。 */
+  .booths { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+
+  .booth {
+    display: flex; flex-direction: column;
+    aspect-ratio: 3 / 4;                  /* 竖版：宽 3 高 4 */
+    border-radius: 18px; overflow: hidden;
+    background: var(--card); border: 1px solid rgba(254, 206, 14, .16);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, .35);
+    transition: transform .22s, border-color .22s, box-shadow .22s;
+  }
+  .booth:hover { transform: translateY(-4px); border-color: rgba(254, 206, 14, .55);
+                 box-shadow: 0 14px 36px rgba(0, 0, 0, .5); }
+
+  /* 图片区：吃掉卡片剩余的全部高度（flex:1），所以卡片是竖的、图也是竖的 */
+  .booth .ph {
+    position: relative; flex: 1; min-height: 0; width: 100%;
+    background:
+      linear-gradient(135deg, rgba(122,152,255,.16), rgba(176,132,255,.12)),
+      #0d1224;
+    display: grid; place-items: center; overflow: hidden;
+  }
+  .booth .ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* 占位内容：图片没找到时显示学院首字，比空白好看 */
+  .booth .ph .fallback {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    color: var(--muted); font-size: 12px; text-align: center; padding: 8px;
+  }
+  .booth .ph .fallback b {
+    font-size: 40px; font-weight: 800; color: rgba(254, 206, 14, .5); line-height: 1;
+  }
+  /* 图片加载失败 → 给 .ph 加 .miss，把裂图整个 display:none 掉。
+     不能只给 img 加 hidden —— 浏览器在脚本跑之前就已经把裂图画出来了。 */
+  .booth .ph.miss img { display: none; }
+  .booth .ph:not(.miss) .fallback { display: none; }   /* 图正常时藏掉占位 */
+
+  /* 院名：固定在底部，最多撑三行（有个学院名很长，两行都放不下） */
+  .booth .name {
+    flex: 0 0 auto;
+    padding: 12px 12px 14px;
+    font-size: 13.5px; font-weight: 700; line-height: 1.45;
+    text-align: center; letter-spacing: .01em;
+    border-top: 1px solid rgba(254, 206, 14, .12);
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap-page">
+  <header class="page-head">
+    <h1>奶龙展览馆</h1>
+    <p>全校 25 个学院的展位 · 共 <span id="count">25</span> 个</p>
+  </header>
+  <main class="booths" id="booths"></main>
+</div>
+
+<script src="assets/site.js"></script>
+<script>
+// 学院名录。顺序就是页面上从左到右、从上到下的顺序。
+// name = 卡片上显示的院名；file = src/ 下的图片文件名（不带扩展名）。
+// 两者分开是因为「管理学院（旅游学院/中法旅游学院）」里有个斜杠 ——
+// 斜杠在 Windows / macOS / Linux 上都不能做文件名，所以图片那边用「·」代替。
+var COLLEGES = [
+  { name: '经济与统计学院' },
+  { name: '法学院（律师学院）' },
+  { name: '马克思主义学院' },
+  { name: '教育学院（师范学院）' },
+  { name: '体育学院' },
+  { name: '人文学院' },
+  { name: '外国语学院' },
+  { name: '新闻与传播学院' },
+  { name: '管理学院（旅游学院/中法旅游学院）', file: '管理学院（旅游学院·中法旅游学院）' },
+  { name: '公共管理学院' },
+  { name: '音乐舞蹈学院' },
+  { name: '美术与设计学院' },
+  { name: '数学与信息科学学院' },
+  { name: '物理与材料科学学院' },
+  { name: '化学化工学院' },
+  { name: '地理科学与遥感学院' },
+  { name: '生命科学学院' },
+  { name: '机械与电气工程学院' },
+  { name: '电子与通信工程学院' },
+  { name: '计算机科学与网络工程学院' },
+  { name: '建筑与城市规划学院' },
+  { name: '土木与交通工程学院' },
+  { name: '环境科学与工程学院' },
+  { name: '网络空间安全学院' },
+  { name: '人工智能学院' }
+].map(function (c) { return { name: c.name, file: c.file || c.name }; });
+
+(function () {
+  var box = document.getElementById('booths');
+  document.getElementById('count').textContent = COLLEGES.length;
+
+  var frag = document.createDocumentFragment();
+
+  COLLEGES.forEach(function (item) {
+    var name = item.name;
+    var el = document.createElement('div');
+    el.className = 'booth';
+    // 不做逐个浮入：25 个格子延迟叠加起来要等 0.6 秒，而且一旦动画没跑
+    // （无头浏览器、省电模式）卡片会停在半透明状态。直接显示更稳。
+
+    var ph = document.createElement('div');
+    ph.className = 'ph';
+
+    var img = document.createElement('img');
+    img.src = 'src/' + encodeURIComponent(item.file) + '.png';
+    img.alt = '';                         // 学院名已经在下面单独显示了，别读两遍
+    img.decoding = 'async';
+    // 不用 loading="lazy"：这些格子一屏就能滚完，而且 lazy 会让没进视口的图片
+    // 一直不请求，滚动时一片空白。25 张图的量级不值得省这点。
+
+    var fb = document.createElement('div');
+    fb.className = 'fallback';
+    fb.innerHTML = '<b></b><span>图片待补充</span>';
+    fb.querySelector('b').textContent = name.charAt(0);
+
+    // 加载失败就标记整个框，CSS 会把裂图藏掉、露出占位。
+    // 用 .miss 而不是 img.hidden：有些浏览器在脚本执行前就把裂图渲染出来了。
+    function markMiss() { ph.classList.add('miss'); }
+    img.addEventListener('error', markMiss);
+    // 缓存里已经是失败态时 error 不会再触发，补一次检查
+    if (img.complete && img.naturalWidth === 0) markMiss();
+
+    ph.appendChild(img);
+    ph.appendChild(fb);
+
+    var label = document.createElement('div');
+    label.className = 'name';
+    label.textContent = name;
+
+    el.appendChild(ph);
+    el.appendChild(label);
+    frag.appendChild(el);
+  });
+
+  box.appendChild(frag);
+})();
+</script>
+</body>
+</html>

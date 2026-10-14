@@ -1,0 +1,180 @@
+/* ============================================================================
+   宇宙奶龙大学 —— 子页面共用样式（home / show / notice）
+
+   从 index.html 里抽出来的同一套深色主题 + 流动背景，抽出来是为了四个页面
+   风格完全一致，改一处就全变，不用在三个文件里各复制一遍。
+
+   index.html 自己是内联样式的（那个页面必须最快，不想多一个请求），
+   所以它没引用这个文件 —— 两边都改的时候记得同步。
+   ============================================================================ */
+
+:root {
+  --bg: #080b1a;
+  --fg: #eef1ff;
+  --muted: #8b93b8;
+  --ink: #fece0e;
+  --warn: #ff6b60;
+  --go: #3ddc84;
+  --track: rgba(254, 206, 14, .18);
+  --card: #141a2e;
+  --card-hi: #1e2540;      /* 卡片 hover 时提亮一档 */
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; margin: 0; }
+
+body {
+  min-height: 100vh;
+  min-height: 100svh;
+  padding: 72px 18px 56px;      /* 顶部留出返回按钮的位置 */
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---------- 背景：流动光斑 → 磨砂玻璃 → 星星（三层，零请求）---------- */
+.flow, .frost, body::before { position: fixed; inset: 0; pointer-events: none; }
+
+.flow { z-index: -3; overflow: hidden; }
+.flow i { position: absolute; display: block; border-radius: 50%; opacity: .8; }
+.flow i:nth-child(1) { width: 58vmax; height: 58vmax; left: -8%;  top: -12%;
+                       background: rgba(122, 152, 255, .85); animation: flow1 20s ease-in-out infinite; }
+.flow i:nth-child(2) { width: 48vmax; height: 48vmax; right: -10%; top: -8%;
+                       background: rgba(255, 186, 122, .78); animation: flow2 25s ease-in-out infinite; }
+.flow i:nth-child(3) { width: 52vmax; height: 52vmax; right: -4%; bottom: -16%;
+                       background: rgba(176, 132, 255, .76); animation: flow3 22s ease-in-out infinite; }
+.flow i:nth-child(4) { width: 44vmax; height: 44vmax; left: -6%;  bottom: -14%;
+                       background: rgba(120, 226, 200, .70); animation: flow4 28s ease-in-out infinite; }
+.flow i:nth-child(5) { width: 38vmax; height: 38vmax; left: 34%;  top: 28%;
+                       background: rgba(255, 226, 122, .62); animation: flow5 18s ease-in-out infinite; }
+
+.frost { z-index: -2; background: color-mix(in srgb, var(--bg) 52%, transparent);
+         -webkit-backdrop-filter: blur(48px) saturate(160%);
+         backdrop-filter: blur(48px) saturate(160%); }
+@supports not (backdrop-filter: blur(2px)) { .frost { background: var(--bg); } }
+
+/* 星星层 */
+body::before {
+  content: "";
+  z-index: -1;
+  opacity: .9;
+  animation: twinkle 4s ease-in-out infinite;
+  background-image:
+    radial-gradient(1.6px 1.6px at 12% 18%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 28% 72%, #dfe8ff, transparent),
+    radial-gradient(1.8px 1.8px at 44% 12%, #fff, transparent),
+    radial-gradient(1.1px 1.1px at 61% 46%, #cfe0ff, transparent),
+    radial-gradient(1.5px 1.5px at 78% 24%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 89% 66%, #e6ecff, transparent),
+    radial-gradient(1.4px 1.4px at 8% 88%, #fff, transparent),
+    radial-gradient(1.1px 1.1px at 68% 86%, #cfe0ff, transparent),
+    radial-gradient(1.3px 1.3px at 35% 38%, #fff, transparent),
+    radial-gradient(1.7px 1.7px at 95% 8%, #fff, transparent);
+}
+
+@keyframes flow1 { 0%,100% { transform: translate3d(0,0,0) scale(1); }
+                   33%     { transform: translate3d(16vw,10vh,0) scale(1.18); }
+                   66%     { transform: translate3d(6vw,22vh,0) scale(.92); } }
+@keyframes flow2 { 0%,100% { transform: translate3d(0,0,0) scale(1.05); }
+                   40%     { transform: translate3d(-20vw,16vh,0) scale(.88); }
+                   70%     { transform: translate3d(-8vw,30vh,0) scale(1.2); } }
+@keyframes flow3 { 0%,100% { transform: translate3d(0,0,0) scale(1); }
+                   35%     { transform: translate3d(-18vw,-14vh,0) scale(1.22); }
+                   75%     { transform: translate3d(-4vw,-26vh,0) scale(.94); } }
+@keyframes flow4 { 0%,100% { transform: translate3d(0,0,0) scale(.95); }
+                   45%     { transform: translate3d(22vw,-18vh,0) scale(1.15); }
+                   80%     { transform: translate3d(30vw,-4vh,0) scale(1); } }
+@keyframes flow5 { 0%,100% { transform: translate3d(0,0,0) scale(1.1); }
+                   50%     { transform: translate3d(-14vw,18vh,0) scale(.85); } }
+@keyframes twinkle { 0%, 100% { opacity: .55; } 50% { opacity: .95; } }
+@keyframes riseIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+/* 入场动画：只动 opacity / transform，且 0.5 秒内结束。
+   注意不要靠 animation-fill-mode:backwards 来「先藏起来」—— 一旦动画因为
+   某种原因没跑（省电模式、渲染进程调度、无头浏览器），元素会一直停在
+   opacity:0 上，看起来就是「页面空白」。所以这里不用 backwards，
+   默认就是可见的，动画只是锦上添花。 */
+.anim-in { animation: riseIn .45s ease-out; }
+
+/* ---------- 通用零件 ---------- */
+.wrap-page { max-width: 1080px; margin: 0 auto; }
+
+.back-btn {
+  position: fixed; left: max(12px, env(safe-area-inset-left)); top: max(12px, env(safe-area-inset-top));
+  z-index: 10;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px 8px 10px; border-radius: 999px;
+  background: rgba(20, 26, 46, .82); border: 1px solid rgba(254, 206, 14, .28);
+  color: var(--fg); font-size: 14px; font-weight: 600; text-decoration: none;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  transition: background-color .2s, border-color .2s, transform .2s;
+}
+.back-btn:hover, .back-btn:focus-visible {
+  background: var(--card-hi); border-color: var(--ink); transform: translateX(-2px);
+}
+.back-btn svg { width: 16px; height: 16px; }
+
+.page-head { text-align: center; margin-bottom: 34px; animation: riseIn .45s ease-out; }
+.page-head h1 {
+  font-size: clamp(24px, 6vw, 36px); font-weight: 800;
+  letter-spacing: .1em; padding-left: .1em;
+}
+.page-head p { margin-top: 10px; font-size: clamp(13px, 3.4vw, 15px); color: var(--muted); line-height: 1.7; }
+
+/* 卡片网格：窄屏一列，宽屏自动多列 */
+.grid {
+  display: grid; gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+.grid.wide { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+
+.card {
+  position: relative; display: flex; flex-direction: column; gap: 10px;
+  padding: 20px 18px; border-radius: 18px;
+  background: var(--card); border: 1px solid rgba(254, 206, 14, .16);
+  color: var(--fg); text-decoration: none;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .35);
+  transition: transform .22s, border-color .22s, background-color .22s, box-shadow .22s;
+}
+.card:hover, .card:focus-visible {
+  transform: translateY(-4px); background: var(--card-hi);
+  border-color: rgba(254, 206, 14, .55);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, .5);
+}
+.card .ico { width: 34px; height: 34px; color: var(--ink); }
+.card .ico svg { width: 100%; height: 100%; display: block; }
+.card h2 { font-size: 17px; font-weight: 700; letter-spacing: .02em; }
+.card p { font-size: 13px; line-height: 1.65; color: var(--muted); }
+.card .arrow {
+  position: absolute; right: 16px; top: 18px;
+  width: 16px; height: 16px; color: var(--muted);
+  transition: transform .22s, color .22s;
+}
+.card:hover .arrow { transform: translate(2px, -2px); color: var(--ink); }
+
+/* 占位卡片（还没做的东西） */
+.card.soon { cursor: default; opacity: .62; }
+.card.soon:hover { transform: none; background: var(--card); border-color: rgba(254, 206, 14, .16); box-shadow: 0 8px 28px rgba(0, 0, 0, .35); }
+.badge-soon {
+  align-self: flex-start; margin-top: auto;
+  padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700;
+  background: var(--track); color: var(--ink);
+}
+
+.sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+      overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* 出错/空状态 */
+.empty {
+  padding: 40px 20px; border-radius: 18px; text-align: center;
+  background: var(--card); border: 1px dashed rgba(254, 206, 14, .3);
+  color: var(--muted); font-size: 14px; line-height: 1.9;
+}
+.empty code { padding: 1px 6px; border-radius: 6px; background: var(--track); color: var(--ink); font-weight: 700; }
+
+@media (prefers-reduced-motion: reduce) {
+  .flow i, body::before { animation: none !important; }
+  .page-head { animation: none; }
+  .card, .back-btn, .card .arrow { transition: none; }
+}
