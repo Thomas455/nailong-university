@@ -121,7 +121,9 @@ var COLLEGES = [
     ph.className = 'ph';
 
     var img = document.createElement('img');
-    img.src = 'src/' + encodeURIComponent(item.file) + '.png';
+    // 用 webp：同一张图 PNG 要 1~4MB，webp q88 只要 60~340KB（省 90% 以上）。
+    // 学院图片是照片类内容，webp 有损压缩几乎看不出差别。
+    img.src = 'src/' + encodeURIComponent(item.file) + '.webp';
     img.alt = '';                         // 学院名已经在下面单独显示了，别读两遍
     img.decoding = 'async';
     // 不用 loading="lazy"：这些格子一屏就能滚完，而且 lazy 会让没进视口的图片
