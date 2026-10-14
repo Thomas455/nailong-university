@@ -73,11 +73,11 @@
     user-select: none;
     -webkit-tap-highlight-color: transparent;
   }
-  /* 星星层：位置固定（写死各坐标），整层缓慢闪烁（keyframes 动 opacity，不动 background-position） */
+  /* 星星层：位置固定（坐标写死在 background-image 里），整层缓慢闪烁。
+     只对 opacity 做动画 —— 早期版本想用 background-position 让星星移动，实测那样
+     多张背景图各自独立、简写形式下根本不生效，而且要 10 个图层各配一套延迟。 */
   body::before {
     content: "";
-    position: fixed; inset: 0; z-index: -1; pointer-events: none;
-    opacity: 0;
     background-image:
       radial-gradient(1.6px 1.6px at 12% 18%, #fff, transparent),
       radial-gradient(1.2px 1.2px at 28% 72%, #dfe8ff, transparent),
@@ -91,29 +91,62 @@
       radial-gradient(1.7px 1.7px at 95% 8%, #fff, transparent);
   }
 
-  /* ---------- 背景：星星 + 缓慢漂移的星云，全部 CSS 动画，零请求 ---------- */
-  /* 两层星：body::before 是星星，.nebula 是背后的彩色光斑（比星星更淡） */
-  .nebula { position: fixed; inset: -20%; z-index: -2; pointer-events: none; opacity: 0;
-            background:
-              radial-gradient(38% 34% at 22% 28%, rgba(120,150,255,.30), rgba(120,150,255,0) 70%),
-              radial-gradient(32% 30% at 78% 24%, rgba(255,190,120,.22), rgba(255,190,120,0) 70%),
-              radial-gradient(40% 36% at 62% 78%, rgba(170,120,255,.22), rgba(170,120,255,0) 70%),
-              radial-gradient(28% 26% at 12% 78%, rgba(120,230,200,.18), rgba(120,230,200,0) 70%);
-            animation: drift 46s ease-in-out infinite alternate; }
-  /* 深色模式下星星 + 星云都点亮；浅色下只留极淡的暖色星云，免得干扰米色背景 */
+  /* ---------- 背景：三层，全部纯 CSS，零请求 ----------
+     自下而上：.flow（流动的彩色光斑）→ .frost（磨砂玻璃，把它糊开）→ 星星（保持清晰）
+     z-index 全为负，所以永远在内容底下，也不会挡住点击（pointer-events: none）。 */
+  .flow, .frost, body::before { position: fixed; inset: 0; pointer-events: none; }
+
+  /* 第 1 层：5 团光斑各自游动。每团单独一个 keyframes，
+     路径和时长都不同，叠在一起才不会看出「循环」的机械感。 */
+  .flow { z-index: -3; overflow: hidden; }
+  .flow i { position: absolute; display: block; border-radius: 50%; }
+  .flow i:nth-child(1) { width: 58vmax; height: 58vmax; left: -8%;  top: -12%;
+                         background: rgba(122, 152, 255, .85); animation: flow1 34s ease-in-out infinite; }
+  .flow i:nth-child(2) { width: 48vmax; height: 48vmax; right: -10%; top: -8%;
+                         background: rgba(255, 186, 122, .78); animation: flow2 41s ease-in-out infinite; }
+  .flow i:nth-child(3) { width: 52vmax; height: 52vmax; right: -4%; bottom: -16%;
+                         background: rgba(176, 132, 255, .76); animation: flow3 37s ease-in-out infinite; }
+  .flow i:nth-child(4) { width: 44vmax; height: 44vmax; left: -6%;  bottom: -14%;
+                         background: rgba(120, 226, 200, .70); animation: flow4 45s ease-in-out infinite; }
+  .flow i:nth-child(5) { width: 38vmax; height: 38vmax; left: 34%;  top: 28%;
+                         background: rgba(255, 226, 122, .62); animation: flow5 29s ease-in-out infinite; }
+
+  /* 第 2 层：磨砂玻璃。backdrop-filter 把下面那层流动的光斑糊成一片，柔和很多。
+     底色只盖 52%，留足够的光斑透出来 —— 盖太多就糊成一片死板的纯色了。 */
+  .frost { z-index: -2; background: color-mix(in srgb, var(--bg) 52%, transparent);
+           -webkit-backdrop-filter: blur(48px) saturate(160%);
+           backdrop-filter: blur(48px) saturate(160%); }
+  /* 不支持 backdrop-filter 的老浏览器：退回不透明底色，至少不难看 */
+  @supports not (backdrop-filter: blur(2px)) {
+    .frost { background: var(--bg); }
+  }
+
+  /* 第 3 层：星星压在磨砂玻璃之上，所以 twinkle 时不会被糊掉 */
+  body::before { z-index: -1; opacity: 0; }
+
   @media (prefers-color-scheme: dark) {
-    .nebula { opacity: .9; }
+    .flow i { opacity: .8; }              /* 深色下压暗一点，别太艳 */
     body::before { opacity: .9; animation: twinkle 5.5s ease-in-out infinite; }
   }
   @media (prefers-color-scheme: light) {
-    .nebula { opacity: .5; filter: saturate(.7); }
+    .flow i { opacity: .78; filter: saturate(.85); }   /* 浅色下稍淡，不干扰阅读 */
   }
-  /* 星云整体缓慢漂移 + 呼吸 */
-  @keyframes drift {
-    0%   { transform: translate3d(-1.5%, -1%, 0) scale(1); }
-    50%  { transform: translate3d(1.5%, 1.5%, 0) scale(1.06); }
-    100% { transform: translate3d(-1%, 1%, 0) scale(1.02); }
-  }
+
+  /* 光斑游动：位移 + 缩放，都在 GPU 上跑（transform 不触发重排） */
+  @keyframes flow1 { 0%,100% { transform: translate3d(0,0,0) scale(1); }
+                     33%     { transform: translate3d(16vw,10vh,0) scale(1.18); }
+                     66%     { transform: translate3d(6vw,22vh,0) scale(.92); } }
+  @keyframes flow2 { 0%,100% { transform: translate3d(0,0,0) scale(1.05); }
+                     40%     { transform: translate3d(-20vw,16vh,0) scale(.88); }
+                     70%     { transform: translate3d(-8vw,30vh,0) scale(1.2); } }
+  @keyframes flow3 { 0%,100% { transform: translate3d(0,0,0) scale(1); }
+                     35%     { transform: translate3d(-18vw,-14vh,0) scale(1.22); }
+                     75%     { transform: translate3d(-4vw,-26vh,0) scale(.9); } }
+  @keyframes flow4 { 0%,100% { transform: translate3d(0,0,0) scale(.95); }
+                     45%     { transform: translate3d(22vw,-18vh,0) scale(1.15); }
+                     80%     { transform: translate3d(30vw,-4vh,0) scale(1); } }
+  @keyframes flow5 { 0%,100% { transform: translate3d(0,0,0) scale(1.1); }
+                     50%     { transform: translate3d(-14vw,18vh,0) scale(.85); } }
   /* 星星明暗闪动 */
   @keyframes twinkle {
     0%, 100% { opacity: .55; }
@@ -159,20 +192,21 @@
                     background: radial-gradient(circle at center, rgba(31,157,85,.34) 0 46%, rgba(31,157,85,0) 72%); }
   .resuming .progress .bar { stroke: var(--go); }
 
-  /* 提示条：默认藏在下面，点奶龙时上浮 */
-  .pet-msg { display: flex; flex-direction: column; align-items: center; gap: 2px;
-             height: 0; opacity: 0; overflow: hidden; transform: translateY(-6px);
-             transition: opacity .25s, transform .25s, height .25s; }
-  .petting .pet-msg { height: auto; opacity: 1; transform: none; }
-  .pet-msg b { font-size: clamp(15px, 4vw, 18px); font-weight: 800; color: var(--warn); letter-spacing: .04em; }
-  .pet-msg span { font-size: 13px; color: var(--muted); }
-  /* 恢复提示：绿色 */
-  .resume-msg { display: flex; flex-direction: column; align-items: center; gap: 2px;
-                height: 0; opacity: 0; overflow: hidden; transform: translateY(-6px);
-                transition: opacity .25s, transform .25s, height .25s; }
-  .resuming .resume-msg { height: auto; opacity: 1; transform: none; }
-  .resume-msg b { font-size: clamp(15px, 4vw, 18px); font-weight: 800; color: var(--go); letter-spacing: .04em; }
-  .resume-msg span { font-size: 13px; color: var(--muted); }
+  /* 两条状态提示共用同一个「槽位」：高度写死，一开始就占好位置。
+     之前用 height:0 → auto 展开，会把下面的「立即前往」乃至整个徽章顶得上下乱跳。 */
+  .msg-slot { position: relative; width: 100%; height: 44px; }
+  .pet-msg, .resume-msg {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    opacity: 0; visibility: hidden;            /* hidden 而非仅透明：读屏器不会念没显示的那条 */
+    transition: opacity .25s, visibility .25s;
+  }
+  .petting  .pet-msg    { opacity: 1; visibility: visible; }
+  .resuming .resume-msg { opacity: 1; visibility: visible; }
+  .pet-msg b, .resume-msg b { font-size: clamp(15px, 4vw, 18px); font-weight: 800; letter-spacing: .04em; }
+  .pet-msg b { color: var(--warn); }
+  .resume-msg b { color: var(--go); }
+  .pet-msg span, .resume-msg span { font-size: 13px; color: var(--muted); }
 
   .copy { display: flex; flex-direction: column; align-items: center; gap: 10px; transition: opacity .3s, transform .3s; }
   h1 { font-size: clamp(26px, 7vw, 40px); font-weight: 800; letter-spacing: .12em; padding-left: .12em; }
@@ -251,12 +285,15 @@
     .run .badge, .run .core, .run .copy, .dots i, .about[open], .petting .pet-face { animation: none; }
     .wrap, .copy, .halo, .pet-msg, .resume-msg, .gh-btn { transition: none; }
     /* 动态背景全关：既省电，也尊重「减少动态效果」的系统设置 */
-    .nebula, body::before { animation: none !important; }
+    .flow i, body::before { animation: none !important; }
   }
 </style>
 </head>
 <body>
-<div class="nebula" aria-hidden="true"></div>
+<!-- 背景两层：.flow 是流动的彩色光斑，.frost 是盖在它上面的磨砂玻璃。
+     都是 aria-hidden + pointer-events:none，不参与读屏也不挡点击。 -->
+<div class="flow" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+<div class="frost" aria-hidden="true"></div>
 <main>
   <div class="wrap">
     <div class="badge">
@@ -278,14 +315,16 @@
   <div class="copy">
     <h1 id="title">宇宙奶龙大学</h1>
     <p class="status">奶龙正在护送你前往 <strong id="to">广州大学</strong><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span></p>
-    <p class="pet-msg" id="pet-msg" role="status" aria-live="polite">
-      <b>奶龙被摸头了！</b>
-      <span id="pet-sub">倒计时已暂停 · 再点一下重新计时</span>
-    </p>
-    <p class="resume-msg" id="resume-msg" role="status" aria-live="polite">
-      <b>出发！计时重新开始</b>
-      <span id="resume-sub">奶龙说：这次要看完整动画哦</span>
-    </p>
+    <div class="msg-slot">
+      <p class="pet-msg" id="pet-msg" role="status" aria-live="polite">
+        <b>奶龙被摸头了！</b>
+        <span id="pet-sub">倒计时已暂停 · 再点一下重新计时</span>
+      </p>
+      <p class="resume-msg" id="resume-msg" role="status" aria-live="polite">
+        <b>出发！计时重新开始</b>
+        <span id="resume-sub">奶龙说：这次要看完整动画哦</span>
+      </p>
+    </div>
     <p class="hint" id="hint">立即前往</p>
     <noscript><p class="hint"><a href="https://www.gzhu.edu.cn/">没有自动跳转？点这里</a></p></noscript>
   </div>
@@ -438,7 +477,7 @@
 
   // 摸奶龙：第一次暂停（红），再点重新计时（绿）
   petBtn.addEventListener('click', () => {
-    if (leaving) return;
+    if (leaving || about.open) return;   // 弹窗开着时别响应，它在最上层
     if (petting) { unpause(); return; }
     pause();
     petCount++;
@@ -449,7 +488,7 @@
   });
 
   // 跳转前给统计脚本留点时间：保证「打开到跳转」至少过 BUDGET 毫秒。
-  // 等完动画的（约 3.1s）早已超过预算，不会多等；提前点掉的才补等。被拦截就一秒不等。
+  // 等完动画的（约 5.5s）早已超过预算，不会多等；提前点掉的才补等。被拦截就一秒不等。
   const BUDGET = 1200;
   function redirect() {
     const a = window.__analytics;
@@ -467,35 +506,37 @@
     }, 60);
   }
 
-  // 打开「关于」时暂停倒计时和进度条，关闭后从剩余时间继续（「关于」是接着数，摸奶龙是重新数）
-  let aboutLeft = 0;
+  // 「关于」弹窗：打开时暂停倒计时，关闭后从剩余时间继续。
+  // 「关于」是「接着数」，摸奶龙是「重新数」，两者用不同的状态分开记。
+  let aboutLeft = 0, aboutWasPetting = false;
   aboutBtn.addEventListener('click', () => {
-    if (leaving || petting) return;
-    clearTimeout(timer);
-    aboutLeft = Math.max(0, deadline - performance.now());
-    body.classList.add('paused');
+    if (leaving || about.open) return;
+    aboutWasPetting = petting;      // 本来就在摸头暂停中，关掉弹窗后要保持暂停
+    if (!petting) {
+      clearTimeout(timer);
+      aboutLeft = Math.max(0, deadline - performance.now());
+      body.classList.add('paused');
+    }
     about.showModal();
   });
   about.addEventListener('close', () => {
+    if (aboutWasPetting) return;    // 原本就暂停着，维持原样，等用户再点一次奶龙
     body.classList.remove('paused');
     if (!leaving) arm(aboutLeft);
   });
   about.addEventListener('click', e => { if (e.target === about) about.close(); }); // 点遮罩关闭
 
-  // 点页面别处 / 按键 = 立即跳转。但点在奶龙、「关于」、GitHub 图标上都不算
-  const IGNORED_KEYS = ['Tab', 'Shift', 'Control', 'Alt', 'Meta'];
-  const ghBtn = document.querySelector('.gh-btn');
-  function skip(e) {
-    if (about.open || leaving) return;
-    if (petBtn.contains(e.target) || aboutBtn.contains(e.target)) return;
-    if (ghBtn && ghBtn.contains(e.target)) return;   // 点 GitHub 图标是去 GitHub，不是跳转
-    if (e.type === 'keydown' && IGNORED_KEYS.includes(e.key)) return;
-    leave('skip');
-  }
-  // 用 click 而不是 pointerdown：按钮自己会派发 click，
-  // 指针事件在移动端还会先触发 pointerdown，会跟按钮打架。
-  addEventListener('click', skip);
-  addEventListener('keydown', skip);
+  // 以前这里有个「点页面任何地方 / 按任意键 = 立即跳转」的全局监听，
+  // 已经移除：它会跟页面上的链接打架（点 GitHub 图标会变成跳去学校官网），
+  // 而且「点到空白处就突然跳走」本身也很突兀。现在只有倒计时结束才会跳。
+  // 想立刻走的人，点一下奶龙右侧的「立即前往」——见下面 hintEl 的处理。
+  hintEl.style.cursor = 'pointer';
+  hintEl.addEventListener('click', e => {
+    e.stopPropagation();            // 别让它冒泡到别处
+    if (!leaving) leave('skip');
+  });
+  hintEl.title = '点这里立刻前往';
+
   start();
 })();
 </script>
