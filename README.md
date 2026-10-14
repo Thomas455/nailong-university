@@ -378,6 +378,10 @@ python tools/build_works_list.py --convert    # 顺手把 jpg/png 转成 webp
 
 完整说明见 [`works/README.txt`](works/README.txt)。
 
+**别人想投稿（提 PR）？** 让他们看 [`works/投稿指南.md`](works/投稿指南.md) ——
+那份是写给投稿者的，更简短，并说明了**为什么优先用 `list.txt` 而不是数字命名**
+（多人同时投稿时数字编号会撞号，`list.txt` 只是各自加一行，冲突好解）。
+
 ### 公告怎么写
 
 在 `notice/` 里放 `1.txt`、`2.txt`、`3.txt`……，**第一行当标题，其余当正文**。
