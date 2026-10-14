@@ -97,19 +97,20 @@
   .flow, .frost, body::before { position: fixed; inset: 0; pointer-events: none; }
 
   /* 第 1 层：5 团光斑各自游动。每团单独一个 keyframes，
-     路径和时长都不同，叠在一起才不会看出「循环」的机械感。 */
+     路径和时长都不同，叠在一起才不会看出「循环」的机械感。
+     时长控制在 18~28 秒 —— 再慢就看不出在动，再快会显得躁。 */
   .flow { z-index: -3; overflow: hidden; }
   .flow i { position: absolute; display: block; border-radius: 50%; }
   .flow i:nth-child(1) { width: 58vmax; height: 58vmax; left: -8%;  top: -12%;
-                         background: rgba(122, 152, 255, .85); animation: flow1 34s ease-in-out infinite; }
+                         background: rgba(122, 152, 255, .85); animation: flow1 20s ease-in-out infinite; }
   .flow i:nth-child(2) { width: 48vmax; height: 48vmax; right: -10%; top: -8%;
-                         background: rgba(255, 186, 122, .78); animation: flow2 41s ease-in-out infinite; }
+                         background: rgba(255, 186, 122, .78); animation: flow2 25s ease-in-out infinite; }
   .flow i:nth-child(3) { width: 52vmax; height: 52vmax; right: -4%; bottom: -16%;
-                         background: rgba(176, 132, 255, .76); animation: flow3 37s ease-in-out infinite; }
+                         background: rgba(176, 132, 255, .76); animation: flow3 22s ease-in-out infinite; }
   .flow i:nth-child(4) { width: 44vmax; height: 44vmax; left: -6%;  bottom: -14%;
-                         background: rgba(120, 226, 200, .70); animation: flow4 45s ease-in-out infinite; }
+                         background: rgba(120, 226, 200, .70); animation: flow4 28s ease-in-out infinite; }
   .flow i:nth-child(5) { width: 38vmax; height: 38vmax; left: 34%;  top: 28%;
-                         background: rgba(255, 226, 122, .62); animation: flow5 29s ease-in-out infinite; }
+                         background: rgba(255, 226, 122, .62); animation: flow5 18s ease-in-out infinite; }
 
   /* 第 2 层：磨砂玻璃。backdrop-filter 把下面那层流动的光斑糊成一片，柔和很多。
      底色只盖 52%，留足够的光斑透出来 —— 盖太多就糊成一片死板的纯色了。 */
@@ -126,7 +127,7 @@
 
   @media (prefers-color-scheme: dark) {
     .flow i { opacity: .8; }              /* 深色下压暗一点，别太艳 */
-    body::before { opacity: .9; animation: twinkle 5.5s ease-in-out infinite; }
+    body::before { opacity: .9; animation: twinkle 4s ease-in-out infinite; }
   }
   @media (prefers-color-scheme: light) {
     .flow i { opacity: .78; filter: saturate(.85); }   /* 浅色下稍淡，不干扰阅读 */
@@ -214,10 +215,10 @@
   .dots i {
     display: inline-block; width: .3em; height: .3em; margin-left: .18em;
     border-radius: 50%; background: currentColor; vertical-align: middle;
-    animation: dot 1s ease-in-out infinite;
+    animation: dot .8s ease-in-out infinite;
   }
-  .dots i:nth-child(2) { animation-delay: .15s; }
-  .dots i:nth-child(3) { animation-delay: .3s; }
+  .dots i:nth-child(2) { animation-delay: .12s; }
+  .dots i:nth-child(3) { animation-delay: .24s; }
   .hint { font-size: 13px; color: var(--muted); }
   .hint a { color: inherit; }
 
@@ -263,7 +264,7 @@
   }
 
   .run .badge { animation: pop .7s cubic-bezier(.34, 1.56, .64, 1) backwards; }
-  .run .core { animation: breathe 1.8s ease-in-out .7s infinite; }
+  .run .core { animation: breathe 1.4s ease-in-out .7s infinite; }
   .run .copy { animation: rise .5s ease-out .15s backwards; }
   /* 进度条独立用 .timing 类：恢复时只重置它，徽章不会跟着重播入场动画 */
   .timing .bar { animation: fill var(--delay) linear forwards; }
@@ -318,11 +319,11 @@
     <div class="msg-slot">
       <p class="pet-msg" id="pet-msg" role="status" aria-live="polite">
         <b>奶龙被摸头了！</b>
-        <span id="pet-sub">倒计时已暂停 · 再点一下重新计时</span>
+        <span>倒计时已暂停 · 再点一下重新计时</span>
       </p>
       <p class="resume-msg" id="resume-msg" role="status" aria-live="polite">
         <b>出发！计时重新开始</b>
-        <span id="resume-sub">奶龙说：这次要看完整动画哦</span>
+        <span>奶龙说：这次要看完整动画哦</span>
       </p>
     </div>
     <p class="hint" id="hint">立即前往</p>
@@ -348,7 +349,6 @@
 (() => {
   const TARGET = 'https://www.gzhu.edu.cn/';   // ← 要跳转的大学官网，改这里
   const NAME   = '广州大学';                    // ← 文案里出现的校名，改这里
-  const EASTER = '陈宇龙大学';                  // ← 彩蛋：键盘依次按 cy 触发
 
   const stay = new URLSearchParams(location.search).has('stay'); // 演示用：不跳转，循环播放
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -359,7 +359,7 @@
   const EXIT   = reduce ? 0   : 450;   // 离场（放大淡出）时长，和 CSS .wrap 的 transition 一致
   const BUFFER = 80;                   // 余量：等最后一帧画完再跳
   const TOTAL  = DELAY + EXIT;         // 进度条走满的时刻 = 跳转时刻
-  const SPIN   = 4000;                 // 文字环转一圈（ms）
+  const SPIN   = 3200;                 // 文字环转一圈（ms）
   const RESUME_FLASH = 620;            // 恢复时绿色闪一下的时长
 
   const body = document.body;
@@ -382,22 +382,9 @@
   aboutBtn.hidden = false; // 没有 JS 时弹窗打不开，按钮也就不显示
 
   const petBtn = document.getElementById('pet');
-  const petSub = document.getElementById('pet-sub');
   const hintEl = document.getElementById('hint');
   const hintIdle = hintEl.textContent;
-  let petCount = 0;
-
-  // 键盘依次按 c、y：换个校名，纯属好玩
-  let seq = '';
-  addEventListener('keydown', e => {
-    if (e.key.length !== 1) return;
-    seq = (seq + e.key.toLowerCase()).slice(-8);
-    if (!seq.endsWith('cy')) return;
-    const on = document.getElementById('to').textContent === EASTER;
-    document.getElementById('title').textContent = on ? '宇宙奶龙大学' : EASTER;
-    document.getElementById('to').textContent = on ? NAME : EASTER;
-    document.title = document.getElementById('title').textContent;
-  });
+  let petCount = 0;   // 只用来给统计分「第几次摸」，不影响逻辑
 
   let timer, leaving, deadline, petting, flashTimer;
 
@@ -482,9 +469,6 @@
     pause();
     petCount++;
     window._hmt.push(['_trackEvent', 'pet', 'tap', String(petCount)]);
-    if (petCount === 5) {
-      petSub.textContent = '奶龙说：按 c 再按 y，有彩蛋';
-    }
   });
 
   // 跳转前给统计脚本留点时间：保证「打开到跳转」至少过 BUDGET 毫秒。
