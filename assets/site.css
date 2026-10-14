@@ -129,6 +129,13 @@ body::before {
 }
 .grid.wide { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
 
+/* 田字格：固定 2×2，四张卡片平分，不管屏幕多宽都是两列两行。
+   窄屏（手机）放不下两列时退回单列，否则卡片会挤成一条。 */
+.grid.quad { grid-template-columns: repeat(2, 1fr); gap: 18px; }
+@media (max-width: 560px) {
+  .grid.quad { grid-template-columns: 1fr; }
+}
+
 .card {
   position: relative; display: flex; flex-direction: column; gap: 10px;
   padding: 20px 18px; border-radius: 18px;
@@ -153,14 +160,20 @@ body::before {
 }
 .card:hover .arrow { transform: translate(2px, -2px); color: var(--ink); }
 
-/* 占位卡片（还没做的东西） */
-.card.soon { cursor: default; opacity: .62; }
+/* 占位卡片（还没做的东西）：不可点，明确写「敬请期待」 */
+.card.soon { cursor: default; opacity: .68; }
 .card.soon:hover { transform: none; background: var(--card); border-color: rgba(254, 206, 14, .16); box-shadow: 0 8px 28px rgba(0, 0, 0, .35); }
 .badge-soon {
   align-self: flex-start; margin-top: auto;
-  padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 11px; border-radius: 999px; font-size: 12px; font-weight: 700;
   background: var(--track); color: var(--ink);
 }
+.badge-soon::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--ink); animation: pulse 1.8s ease-in-out infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
 
 .sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
       overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -175,6 +188,6 @@ body::before {
 
 @media (prefers-reduced-motion: reduce) {
   .flow i, body::before { animation: none !important; }
-  .page-head { animation: none; }
+  .page-head, .badge-soon::before { animation: none; }
   .card, .back-btn, .card .arrow { transition: none; }
 }
