@@ -209,6 +209,33 @@
   .resume-msg b { color: var(--go); }
   .pet-msg span, .resume-msg span { font-size: 13px; color: var(--muted); }
 
+  /* 顶部随机语录：从同目录 1.txt 随机抽一行，点一下换一句。
+     高度一开始就写死两行，取不到内容（file:// 双击、或 1.txt 还没放上去）
+     也不会把下面的徽章顶得上下跳。
+     做成实底小卡片：彩色流动背景一直在变，半透明/裸文字的对比度没法保证。 */
+  .quote-slot { width: 100%; min-height: 4.2em; display: flex; align-items: center; justify-content: center; }
+  .quote {
+    max-width: 30em;
+    display: flex; align-items: center; justify-content: center;
+    padding: 9px 18px; border-radius: 14px; text-align: center;
+    font-size: clamp(13px, 3.6vw, 15px); font-weight: 600; line-height: 1.6;
+    color: #2a2000;                       /* 固定深色，不跟随主题，保证对比 */
+    background: #fffdf5;                  /* 实色，不用半透明 */
+    border: 1px solid rgba(254, 206, 14, .45);
+    box-shadow: 0 6px 22px rgba(60, 40, 0, .13);
+    cursor: pointer;
+    transition: transform .2s, box-shadow .2s, border-color .2s;
+  }
+  .quote:empty { display: none; }          /* 没内容时整块不显示 */
+  .quote:hover { transform: translateY(-2px); border-color: var(--ink);
+                 box-shadow: 0 10px 28px rgba(60, 40, 0, .18); }
+  /* 换句子时淡入一下，比硬切自然 */
+  .quote.on { animation: quoteIn .45s ease-out; }
+  @media (prefers-color-scheme: dark) {
+    .quote { color: #f4efe0; background: #1b2136; border-color: rgba(254, 206, 14, .32);
+             box-shadow: 0 6px 22px rgba(0, 0, 0, .45); }
+  }
+
   .copy { display: flex; flex-direction: column; align-items: center; gap: 10px; transition: opacity .3s, transform .3s; }
   h1 { font-size: clamp(26px, 7vw, 40px); font-weight: 800; letter-spacing: .12em; padding-left: .12em; }
   .status { font-size: clamp(14px, 4vw, 17px); }
@@ -279,6 +306,8 @@
   @keyframes fill { to { stroke-dashoffset: 0; } }
   @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
   @keyframes dot { 0%, 100% { opacity: .25; transform: none; } 40% { opacity: 1; transform: translateY(-.25em); } }
+  /* 语录换句子时的淡入 */
+  @keyframes quoteIn { from { opacity: 0; transform: translateY(4px); } }
   /* 被摸头时奶龙左右晃一下 */
   @keyframes nudge { 0%, 100% { transform: none; } 30% { transform: rotate(-3deg) scale(1.03); } 65% { transform: rotate(3deg) scale(1.03); } }
 
@@ -296,6 +325,11 @@
 <div class="flow" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
 <div class="frost" aria-hidden="true"></div>
 <main>
+  <!-- 顶部随机语录，内容由 1.txt 提供（见底部脚本）。外面套个固定高度的槽，
+       这样「还没加载」和「加载好了」不会让页面跳一下。 -->
+  <div class="quote-slot">
+    <p class="quote" id="quote" role="status" aria-live="polite" title="点一下换一句"></p>
+  </div>
   <div class="wrap">
     <div class="badge">
       <svg class="progress" viewBox="0 0 100 100">
@@ -359,12 +393,46 @@
   const EXIT   = reduce ? 0   : 450;   // 离场（放大淡出）时长，和 CSS .wrap 的 transition 一致
   const BUFFER = 80;                   // 余量：等最后一帧画完再跳
   const TOTAL  = DELAY + EXIT;         // 进度条走满的时刻 = 跳转时刻
-  const SPIN   = 3200;                 // 文字环转一圈（ms）
+  const SPIN   = 4000;                 // 文字环转一圈（ms）—— 这个保持原速，不跟背景一起加速
   const RESUME_FLASH = 620;            // 恢复时绿色闪一下的时长
 
   const body = document.body;
   body.style.setProperty('--delay', TOTAL + 'ms');
   if (stay) document.getElementById('hint').textContent += '（演示模式，不会真的跳转）';
+
+  // ---- 顶部语录：从同目录 1.txt 随机抽一行 ----
+  // 用 fetch 而不是 XMLHttpRequest：写法短，而且 file:// 下失败会走 catch，不会弹错误。
+  // 取不到就保持空白（.quote 的高度已经占住），不影响别的元素。
+  const quoteEl = document.getElementById('quote');
+  let quoteLines = [];
+  fetch('1.txt', { cache: 'no-cache' })
+    .then(r => (r.ok ? r.text() : Promise.reject(new Error(r.status))))
+    .then(txt => {
+      // 一行一句；去掉空行和首尾空白，顺便砍掉 BOM
+      quoteLines = txt.replace(/^\uFEFF/, '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+      if (!quoteLines.length) return;
+      showQuote();
+      // 每 3.5 秒自己换一句，和背景一样有「活着」的感觉
+      setInterval(showQuote, 3500);
+      quoteEl.addEventListener('click', showQuote);  // 等不及也可以手动点
+    })
+    .catch(() => { /* 双击本地打开、或 1.txt 不存在：安静地不显示 */ });
+
+  function showQuote() {
+    if (!quoteLines.length) return;
+    // 别连着两次抽到同一句
+    let next = quoteLines[Math.floor(Math.random() * quoteLines.length)];
+    if (quoteLines.length > 1) {
+      let guard = 0;
+      while (next === quoteEl.textContent && guard++ < 8) {
+        next = quoteLines[Math.floor(Math.random() * quoteLines.length)];
+      }
+    }
+    quoteEl.textContent = next;
+    quoteEl.classList.remove('on');
+    void quoteEl.offsetWidth;   // 强制回流，让淡入动画能重放
+    quoteEl.classList.add('on');
+  }
 
   // 动画期间先把目标页面预热，避免跳过去时白屏一下
   const prefetch = document.createElement('link');
