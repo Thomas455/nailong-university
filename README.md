@@ -5,8 +5,11 @@
 
 打开 `宇宙奶龙大学.com` → 先播一段「奶龙护送你入学」的动画 → 动画播完自动跳到 **广州大学**官网（https://www.gzhu.edu.cn/）。
 
-纯静态，没有任何构建步骤和外部依赖，丢到任意静态托管上就能跑 ——
-**推荐 [Cloudflare Pages](#方案-acloudflare-pages推荐但要迁-ns) 或 [GitHub Pages](#方案-bgithub-pages不用动-ns最省事)，两个都不需要买服务器、也不需要 ICP 备案。**
+纯静态，没有任何构建步骤和外部依赖。
+
+> **部署平台：Cloudflare Pages**（2026-10 从 GitHub Pages 迁过来的）。
+> NS 已经迁到 Cloudflare，域名在 Cloudflare 上是自己的 zone。
+> 相关说明见 [第 5 节](#5-部署cloudflare-pages)。
 
 ```
 index.html                  跳转页（页面上那个「回主页」房子图标去 home.html）
@@ -14,15 +17,18 @@ home.html                   校园门户：四张卡片（展览馆 / 公告 / �
 show.html                   奶龙展览馆：25 个学院展位，点卡片翻转看作品
 notice.html                 网站公告：读 notice/ 里的 txt
 assets/site.css             三个子页面共用的样式（深色主题 + 流动背景）
-assets/site.js              共用脚本（插背景层、生成返回按钮）
-src/                        学院展位图片 ← 文件名必须和学院名一模一样
+assets/site.js              共用脚本（插背景层、返回按钮、百度统计）
+assets/works.js             读学院作品列表（list.txt + 数字命名两种来源）
+assets/gallery.js           卡片翻转 / 作品灯箱
+src/                        学院展位封面图（.webp，文件名 = 学院名）
+works/                      学院作品（一个学院一个目录，含投稿指南.md）
 notice/                     公告源文件（1.txt、2.txt……）
 ring.svg                    文字环的原始文件（已内联进 index.html，页面不单独请求）
 core.webp / core.png        奶龙本体：页面用 webp，png 是无损原件
 favicon.ico                 浏览器页签图标（16/32/48，由 favicon.png 派生）
 favicon.png                 iOS / 安卓主屏图标（512×512，手工维护的源文件）
 og.png                      微信、QQ、Twitter 分享卡片图（1200×630）
-CNAME                       GitHub Pages 绑定自定义域名用（已填好 punycode）
+CNAME                       GitHub Pages 时代的域名绑定文件，现在没用（留着无害）
 双手交叉站立.png            奶龙原始素材
 1.txt                       首页顶部随机语录的源文件（一行一句）
 tools/prepare_nailong.py    抠图 → core.png / core.webp
@@ -61,11 +67,17 @@ git push
 
 | 目标 | 建连 | 首字节 |
 | --- | --- | --- |
-| GitHub Pages（本站） | 0.25 ~ 0.46s | **0.49 ~ 0.72s** |
+| **Cloudflare（本站现在）** | — | **约 0.13s** |
+| GitHub Pages（2026-10 之前用的） | 0.25 ~ 0.46s | **0.49 ~ 0.72s** |
 | 广州大学 / 百度（国内站点） | 0.02 ~ 0.13s | 0.03 ~ 0.13s |
 
-一个 RTT 约 0.25 秒，而 **GitHub Pages 只跑 HTTP/1.1**（实测 `HTTP版本=1.1`），
-没有多路复用 —— 所以**每个资源都要单独付一次往返**。少一个请求就是少 0.25 秒。
+> **下面这些内联优化是在 GitHub Pages 时代做的**，当时的取舍背景是：
+> 一个 RTT 约 0.25 秒，而 **GitHub Pages 只跑 HTTP/1.1**（实测 `HTTP版本=1.1`），
+> 没有多路复用 —— 所以**每个资源都要单独付一次往返**，少一个请求就是少 0.25 秒。
+>
+> 换成 Cloudflare 之后，请求数依然值得省（少一个请求总是好的），但**收益的最大头
+> 已经变成"换托管"本身**：0.49s → 0.13s，比这里所有优化加起来还明显。
+> 这些优化留着不吃亏，也顺便让页面在别的静态托管上一样快。
 
 ### 做了什么①：把 ring.svg 内联进 HTML
 
@@ -213,15 +225,19 @@ GitHub 图标是个普通 `<a target="_blank">`。**点它只会去 GitHub**，
 
 ### 还想更快的话
 
-内联已经把这个站能榨的都榨了，再快就得**换托管**（实测数据）：
+内联已经把这个站能榨的都榨了，再快就得**换托管**（实测数据，测于 2026-10）：
 
 | 方案 | 首字节 | 代价 |
 | --- | --- | --- |
-| Vercel | 0.11s | 免费、加 CNAME 即可、不用迁 NS |
-| Cloudflare | 0.13s | 免费、要迁 NS |
-| Netlify | 0.16s | 免费、不用迁 NS |
-| GitHub Pages | 0.49s | 现状 |
 | COS / EdgeOne 大陆节点 | 0.03s | **要 ICP 备案** |
+| Vercel | 0.11s | 免费、加 CNAME 即可、不用迁 NS |
+| **Cloudflare** | 0.13s | ← **本站现在用的**（已迁 NS） |
+| Netlify | 0.16s | 免费、不用迁 NS |
+| GitHub Pages | 0.49s | 之前用的，国内时快时慢 |
+
+> 从 GitHub Pages（0.49s）换到 Cloudflare（0.13s），首字节快了约 **3.7 倍**。
+> 这是本站做过的最有效的一次提速 —— 比前面所有内联优化加起来还明显，
+> 因为瓶颈一直在跨境 RTT，不在页面体积。
 
 ---
 
@@ -567,25 +583,51 @@ new URL('https://www.宇宙奶龙大学.com/').hostname →  'www.xn--psszg58cyd
 * GitHub Pages / Cloudflare Pages 上都不用额外配置，统计脚本照常工作；
 * 统计脚本是 `async` 的，**不影响页面渲染和动画**，最坏情况就是不统计。
 
-## 5. 部署：GitHub Pages 或 Cloudflare Pages（都不用买服务器）
+## 5. 部署：Cloudflare Pages
 
-两个都**不需要 ICP 备案**（服务器在境外），免费额度对这么一个小页面来说完全用不完。
-唯一要注意的是国内访问速度：GitHub Pages 在国内时快时慢，Cloudflare 一般更稳。
+**本站现在就跑在 Cloudflare Pages 上**（2026-10 从 GitHub Pages 迁过来的），
+**不需要 ICP 备案**（节点在境外），免费额度对这么一个小页面完全用不完。
+
+### 现状
+
+| 项 | 值 |
+| --- | --- |
+| 托管 | Cloudflare Pages |
+| NS | 已迁到 Cloudflare（所以 `宇宙奶龙大学.com` 是 Cloudflare 上的一个 zone） |
+| 根域名 | `xn--psszg58cydsdq780c.com`（punycode） |
+| 构建命令 | **留空**（纯静态，没有构建步骤） |
+| 输出目录 | `/` |
+| HTTPS | Cloudflare 自动签发，不用管 |
+| 首字节 | 约 0.13s（GitHub Pages 时代是 0.49s） |
+
+> 迁 NS 之前已经在 Cloudflare 里把原有解析记录补齐（或让它自动扫描导入），
+> 否则邮件等其它服务会断。
+
+### 日常发布
+
+推上去就会自动重新部署，**一般 1 分钟内生效**：
+
+```powershell
+git push
+```
+
+Cloudflare 后台 → Workers & Pages → 选项目 → Deployments 能看到部署历史和状态。
+
+### 为什么换（当时的取舍）
 
 | | GitHub Pages | Cloudflare Pages |
 | --- | --- | --- |
-| 根域名（apex） | ✅ 2 条 A 记录就行（DNSPod 免费版限 2 条） | ⚠️ **必须把 NS 迁到 Cloudflare** |
-| 子域名（www.） | ✅ CNAME | ✅ CNAME（NS 不用动） |
-| HTTPS | ✅ 自动，可开 Enforce HTTPS | ✅ 自动 |
-| 部署方式 | git push | git push 或拖拽上传 |
-| 国内访问 | 一般（可能被墙/很慢） | 较好 |
+| 根域名（apex） | ✅ 2 条 A 记录就行（DNSPod 免费版限 2 条） | 需要把 NS 迁到 Cloudflare |
+| HTTPS | ✅ 自动，要手动开 Enforce HTTPS | ✅ 自动 |
+| 部署方式 | git push | git push |
+| 国内访问 | 一般（可能被墙/很慢），实测 0.49s | 较好，实测 0.13s |
 
-> ⚠️ **最重要的一条**：Cloudflare Pages 的**根域名**（`宇宙奶龙大学.com` 本身）要求这个域名是 Cloudflare 上的一个 zone，
-> 也就是要把 NS 从 DNSPod 改成 Cloudflare 的。Cloudflare 官方文档原文就是这么写的：
+> **Cloudflare Pages 的根域名**（`宇宙奶龙大学.com` 本身）要求这个域名是 Cloudflare 上的一个 zone，
+> 也就是要把 NS 从 DNSPod 改成 Cloudflare 的。Cloudflare 官方文档原文：
 > *"To use a custom apex domain with your Pages project, configure your nameservers to point to Cloudflare's nameservers."*
-> 如果不想动 NS，那 Cloudflare Pages 只能挂 `www.宇宙奶龙大学.com` 这种子域名。
+> 本站已经迁过了，所以这一步不用再做。
 
-### 方案 A：Cloudflare Pages（推荐，但要迁 NS）
+### 当初的迁移步骤（存档，已执行完）
 
 1. **迁 NS**：Cloudflare 控制台 → Add a site → 填 `宇宙奶龙大学.com` → 选 Free 计划 → 它会给你两个 NS（形如 `xxx.ns.cloudflare.com`）。
    去 DNSPod 把域名的 NS 改成这两个（腾讯云域名控制台 → 域名 → DNS 修改）。等生效，一般几分钟到几小时。
@@ -596,7 +638,14 @@ new URL('https://www.宇宙奶龙大学.com/').hostname →  'www.xn--psszg58cyd
    顺手把 `www` 也加上，或者在 Rules → Redirect Rules 里把 `www` 302 到根域名。
 4. HTTPS 证书自动签发，不用管。国内访问如果遇到慢/被墙，可以在 DNS 里换优选 IP（进阶玩法，非必需）。
 
-### 方案 B：GitHub Pages（不用动 NS，最省事）
+### 备选：GitHub Pages（不用迁 NS）
+
+万一以后想换回去，或者想拿它当备用托管 —— 仓库里的 `CNAME` 文件当时就是为它准备的
+（内容是 `xn--psszg58cydsdq780c.com`，punycode 写法）。现在这个文件**留着无害**，
+Cloudflare 会把它当普通文件发布，不影响任何东西。
+
+<details>
+<summary>点开看 GitHub Pages 的配置步骤（当前不用）</summary>
 
 1. **建仓库**：GitHub 上新建一个 **public** 仓库（免费账号的 Pages 只支持公开仓库），比如 `nailong-university`。
 2. **推代码**：本地已经初始化好 git 仓库并提交了（分支 `main`），只要加个远程地址推上去：
@@ -632,7 +681,12 @@ new URL('https://www.宇宙奶龙大学.com/').hostname →  'www.xn--psszg58cyd
 > ① 把 NS 迁到 Cloudflare，那边没有这种条数限制（顺带还能用 Cloudflare Pages）；
 > ② 升级 DNSPod 付费套餐。对这么个小站来说，2 条 A 记录已经完全够用了。
 
-### 方案 C：腾讯云 COS + CDN（也不买服务器，但国内节点要备案）
+</details>
+
+### 其它托管方案（都没在用，仅存档）
+
+<details>
+<summary>方案 C：腾讯云 COS + CDN（国内节点要备案）</summary>
 
 1. **实名认证**：域名先完成实名认证，否则 DNSPod 不给解析。
 2. **建桶**：对象存储 COS → 创建存储桶，地域选就近（如 `ap-guangzhou`），权限选「公有读私有写」。
@@ -648,7 +702,10 @@ new URL('https://www.宇宙奶龙大学.com/').hostname →  'www.xn--psszg58cyd
 
 > 静态网站里中文域名会自动按 punycode（`xn--psszg58cydsdq780c.com`）填写，控制台里显示成中文是正常的。
 
-### 方案 D：轻量应用服务器 / CVM + Nginx
+</details>
+
+<details>
+<summary>方案 D：轻量应用服务器 / CVM + Nginx</summary>
 
 ```nginx
 # HTTP 全量跳 HTTPS
@@ -681,8 +738,10 @@ server {
 DNSPod 给 `@` 和 `www` 各加一条 **A 记录**指向服务器公网 IP。
 
 > ⚠️ 只有这个方案（和方案 C 的国内节点）需要 **ICP 备案**（腾讯云备案控制台，约 1～20 个工作日），否则 80/443 会被阻断。
-> **GitHub Pages 和 Cloudflare Pages 都在境外，不需要备案** —— 这也是建议你用它们的原因。
-> 代价是国内访问速度：GitHub Pages 时快时慢，Cloudflare 相对稳一些，但都不会比备案过的国内节点快。
+> **Cloudflare Pages 在境外，不需要备案** —— 这也是现在用它的原因。
+> 代价是国内访问速度不如备案过的国内节点（Cloudflare 实测 0.13s，备案的国内节点约 0.03s）。
+
+</details>
 
 ## 6. 上线自检
 
@@ -695,8 +754,8 @@ DNSPod 给 `@` 和 `www` 各加一条 **A 记录**指向服务器公网 IP。
 - [ ] 浏览器页签显示奶龙图标（`favicon.ico` + `favicon.png`）
 - [ ] 关掉浏览器 JS 也能跳（页面里有 `<noscript>` 的 meta refresh 兜底）
 - [ ] **双击本地 `index.html` 时图片也正常**（资源是相对路径，不该出现碎图标）
-- [ ] `http://` 能自动跳 `https://`（GitHub Pages 记得勾 Enforce HTTPS；Cloudflare 自动有）
-- [ ] 从国内网络实测打开一次（GitHub Pages 偶尔会慢到十几秒，能接受就行）
+- [ ] `http://` 能自动跳 `https://`（Cloudflare 自动）
+- [ ] 从国内网络实测打开一次（Cloudflare 实测首字节约 0.13s）
 - [ ] 跳转后去百度统计后台「实时访客」，能看到这次访问（手机流量再试一次更准）
 
 ## 7. 改了东西怎么重新发布
@@ -737,6 +796,7 @@ git add -A && git commit -m "换了图" && git push
 手工改过 `favicon.png` 就别跑它。
 
 GitHub Pages 和 Cloudflare Pages 都会在推上去之后自动重新发布，一般 1 分钟内生效。
+（本站现在用 Cloudflare，见 [第 5 节](#5-部署cloudflare-pages)。）
 
 > 页面资源里的 `og.png`、`core.webp` 这些文件名没变，浏览器/CDN 可能缓存旧版本。
 > 如果改完看不到效果，硬刷新（Ctrl+F5）或者给文件名加版本号（如 `core.v2.webp`）。
