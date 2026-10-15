@@ -57,10 +57,23 @@
   back.setAttribute('aria-label', label.indexOf('返回') === 0 ? label : '返回' + label);
   document.body.appendChild(back);
 
-  // 同一个站内来的（有 referrer）就回退，保留用户原来的滚动位置；
-  // 直接输网址进来的没有历史，就老老实实跳转过去。
+  // 站内跳过来的（referrer 是同站）就 history.back()，保留用户原来的滚动位置；
+  // 其余情况一律用 <a> 的 href 正常跳转。
+  //
+  // 注意 referrer 一定要判同源：早期版本只看有没有 referrer，
+  // 结果从搜索引擎 / 书签直接进 home.html 时，点「返回首页」会退回站外，
+  // 而不是去 index.html。
+  function fromSameSite() {
+    if (!document.referrer) return false;
+    try {
+      return new URL(document.referrer).origin === location.origin;
+    } catch (e) {
+      return false;   // referrer 不是合法 URL，当站外处理
+    }
+  }
+
   back.addEventListener('click', function (e) {
-    if (history.length > 1 && document.referrer) {
+    if (history.length > 1 && fromSameSite()) {
       e.preventDefault();
       history.back();
     }
