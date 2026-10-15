@@ -2,6 +2,7 @@
   "name": "nailong-university",
   "compatibility_date": "2026-10-14",
   "assets": {
-    "directory": "./"
+    "directory": "./",
+    "not_found_handling": "404-page"
   }
 }
