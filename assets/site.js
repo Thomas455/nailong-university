@@ -43,6 +43,10 @@
   document.body.insertBefore(flow, frost);
 
   // ---- 返回按钮 ----
+  // 404 页面自己已经放了两个按钮（回首页 / 奶龙主页），不需要再插一个
+  // 固定在左上角的「返回」——那会和它的布局打架。用 data-no-back 退出。
+  if (document.body.hasAttribute('data-no-back')) return;
+
   var target = document.body.getAttribute('data-back') || 'home.html';
   var label = document.body.getAttribute('data-back-label') || '返回';
 

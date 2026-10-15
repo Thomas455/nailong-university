@@ -16,6 +16,7 @@ index.html                  跳转页（页面上那个「回主页」房子图�
 home.html                   校园门户：四张卡片（展览馆 / 公告 / 两个占位）
 show.html                   奶龙展览馆：25 个学院展位，点卡片翻转看作品
 notice.html                 网站公告：读 notice/ 里的 txt
+404.html                    页面走丢时显示（用绝对路径，见下面说明）
 assets/site.css             三个子页面共用的样式（深色主题 + 流动背景）
 assets/site.js              共用脚本（插背景层、返回按钮、百度统计）
 assets/works.js             读学院作品列表（list.txt + 数字命名两种来源）
@@ -411,6 +412,24 @@ python tools/build_works_list.py --convert    # 顺手把 jpg/png 转成 webp
 > 6 个文件 = 6 个往返，GitHub Pages 上（约 0.25s RTT）要白屏 1.5 秒。
 > 现在改成**一批 8 个并行**发，通常一个往返就够。
 
+### 404 页面
+
+`404.html` 会在访问不存在的路径时显示（Cloudflare Pages 自动识别根目录下的这个文件名，
+不用额外配置）。
+
+**⚠️ 它是全站唯一用绝对路径（`/assets/site.css`）的页面，这不是笔误：**
+
+Cloudflare 在**任何路径深度**都会返回 `404.html`，但地址栏还是原来那个坏路径
+（比如 `/foo/bar`）。这时如果写相对路径 `assets/site.css`，浏览器会去要
+`/foo/assets/site.css` —— 那份同样不存在，结果是**页面有 HTML 但没样式**，
+变成一张白板。站点挂在 apex 域名根目录，所以 `/assets/...` 一定指得到。
+
+> 代价：**双击本地打开这个文件时样式会加载失败**（`file://` 下 `/assets/` 会指向磁盘根目录）。
+> 全站只有这一个页面不能用 `file://` 预览，改完想看效果就起本地服务。
+>
+> 页面用 `data-no-back` 让 `assets/site.js` 跳过「返回」按钮的注入 ——
+> 它自己放了「回首页」和「奶龙主页」两个按钮，再来个固定左上角的会打架。
+
 ## 3. 想要改的地方
 
 | 想改什么 | 改哪里 |
@@ -422,6 +441,7 @@ python tools/build_works_list.py --convert    # 顺手把 jpg/png 转成 webp
 | 首页顶部语录 | 改 `1.txt`，一行一句 |
 | 学院名单/顺序 | `show.html` 里的 `COLLEGES` 数组 |
 | 学院作品 | 图片丢进 `works/学院名/`，跑 `tools/build_works_list.py` 生成清单 |
+| 404 文案 | `404.html` 里那两句（`.code` 是那个大号 404） |
 | 公告内容 | `notice/` 里加 txt |
 | 文字环上的字 | `tools/build_assets.py` → `build_ring(text=...)`，重跑脚本 |
 | 奶龙的样子 | 换掉 `双手交叉站立.png`，重跑 `tools/prepare_nailong.py` |
