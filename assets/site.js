@@ -67,6 +67,13 @@
   // 注意 referrer 一定要判同源：早期版本只看有没有 referrer，
   // 结果从搜索引擎 / 书签直接进 home.html 时，点「返回首页」会退回站外，
   // 而不是去 index.html。
+  //
+  // data-back-force：跳过 history.back()，永远走 href。
+  // home.html 需要这个 —— 它的按钮写的是「返回首页」，从 show.html 点进来时
+  // history.back() 会退回 show.html，和按钮上写的去向不符。用户点「返回首页」
+  // 就该到首页，不管上一页是什么。
+  var force = document.body.hasAttribute('data-back-force');
+
   function fromSameSite() {
     if (!document.referrer) return false;
     try {
@@ -77,6 +84,7 @@
   }
 
   back.addEventListener('click', function (e) {
+    if (force) return;                              // 交给 <a> 的 href
     if (history.length > 1 && fromSameSite()) {
       e.preventDefault();
       history.back();

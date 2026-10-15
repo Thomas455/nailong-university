@@ -412,6 +412,31 @@ python tools/build_works_list.py --convert    # 顺手把 jpg/png 转成 webp
 > 6 个文件 = 6 个往返，GitHub Pages 上（约 0.25s RTT）要白屏 1.5 秒。
 > 现在改成**一批 8 个并行**发，通常一个往返就够。
 
+### 左上角的「返回」按钮
+
+子页面左上角那个按钮由 `assets/site.js` 生成，行为由 `<body>` 上的三个属性控制：
+
+| 属性 | 作用 | 谁在用 |
+| --- | --- | --- |
+| `data-back` | 按钮指向哪 | `home.html` → `index.html`；`show/notice` → `home.html`（默认值） |
+| `data-back-label` | 按钮文字 | home 是「返回首页」，其余是「返回」 |
+| `data-back-force` | **跳过 `history.back()`，永远走 `href`** | 只有 `home.html` 用 |
+| `data-no-back` | 索性不生成按钮 | 只有 `404.html` 用（它自己放了两个按钮） |
+
+**为什么 `home.html` 需要 `data-back-force`：**
+
+默认逻辑是「站内跳过来的就 `history.back()`，保留你原来的滚动位置」。
+但 `home.html` 的按钮写的是**「返回首页」** —— 从 `show.html` 点进来时，
+`history.back()` 会把你退回 `show.html`，**和按钮上写的去向对不上**。
+用户点「返回首页」就该到首页，不管上一页是什么。
+
+实测对照（同样从 `show.html` 进入，`history.length = 2`、referrer 同源）：
+
+| | 点击后 |
+| --- | --- |
+| 不加 `data-back-force` | 退回 `show.html` ← 和按钮文字不符 |
+| 加了 `data-back-force` | 去 `index.html` ✓ |
+
 ### 404 页面
 
 `404.html` 会在访问不存在的路径时显示（Cloudflare Pages 自动识别根目录下的这个文件名，

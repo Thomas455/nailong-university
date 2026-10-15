@@ -11,7 +11,10 @@
 <!-- 和子页面共用同一套样式，风格才不会各写各的 -->
 <link rel="stylesheet" href="assets/site.css">
 </head>
-<body data-back="index.html" data-back-label="返回首页">
+<!-- data-back-force：不管从哪来，「返回首页」都去 index.html。
+     不加这个的话，从 show.html / notice.html 点进来时，按钮会走 history.back()
+     退回上一页，和「返回首页」这四个字对不上。 -->
+<body data-back="index.html" data-back-label="返回首页" data-back-force>
 
 <div class="wrap-page">
   <header class="page-head">
