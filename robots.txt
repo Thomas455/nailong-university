@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# 错误页和给页面 fetch 的数据文件（notice/*.txt）不用抓
+Disallow: /404.html
+
+Sitemap: https://xn--psszg58cydsdq780c.com/sitemap.xml

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  宇宙奶龙大学 · sitemap
+
+  ⚠️ 地址一律写**不带 .html 的干净形式**。
+  本站的 Cloudflare 会对 /home.html 发 307 跳到 /home ——
+  sitemap 里列跳转地址，搜索引擎会把每个页面都当成「重定向」，
+  白白浪费抓取额度，还可能判定成重复内容。列最终地址才对。
+
+  收录原则：只列**能独立访问、且有独立内容**的页面。
+  本站是纯静态站，页面就那么几个，不需要脚本自动生成。
+
+  ⚠️ 没有收录的东西，以及为什么：
+
+  · index.html（/）
+      首页是个会自动跳到 /home 的过场动画页。
+      收录它等于让搜索引擎抓到一堆重复的「奶龙正在护送你前往…」，
+      而且用户点进来也留不住 —— 没必要。
+
+  · 25 个学院
+      show 页里的学院切换是纯前端状态，**没有 URL 参数**
+      （gallery.js 里不读 location.search），
+      也就是每个学院没有一个能直接打开的地址。
+      sitemap 只能列真实存在的 URL，所以这里只列 /show 本身。
+
+  · 29 件作品 / 29 张图
+      同上，作品是在 /show 里点出来的，没有各自的页面。
+      列一堆图片 URL 对「让人搜到网站」没有帮助。
+
+  · 404.html
+      错误页不该被收录。
+
+  如果以后给学院加了 ?college=xxx 深链，或给作品开了详情页，
+  记得回来加 —— 那时候才值得改成脚本自动生成。
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+                            http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+
+  <!-- 主入口（导航页） -->
+  <url>
+    <loc>https://xn--psszg58cydsdq780c.com/home</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- 奶龙展览馆：25 个学院、全部作品都在这里 -->
+  <url>
+    <loc>https://xn--psszg58cydsdq780c.com/show</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- 网站公告 -->
+  <url>
+    <loc>https://xn--psszg58cydsdq780c.com/notice</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+</urlset>
