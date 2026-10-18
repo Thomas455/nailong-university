@@ -1,4 +1,0 @@
-网站已迁移到cloudflare
-网站从github pages换到了cloudflare pages，访问速度将显著提升！
-哈哈哈哈哈哈哈哈哈哈
-2026年10月14日
