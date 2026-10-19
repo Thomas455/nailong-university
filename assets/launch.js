@@ -1484,6 +1484,61 @@
   planetGroup.position.set(-70, 330, -2400);
   scene.add(planetGroup);
 
+  /* 星球名字标注
+     抵达之前画面上只有「一个很好看的星球」，没有任何文字告诉你它是什么。
+     这里给它挂一个名字牌，和主体信息一起出现。 */
+  var planetLabel = null;
+  (function buildPlanetLabel() {
+    var W = 768, H = 256;
+    var cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    var g = cv.getContext('2d');
+
+    // 上：小字「目的地」
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.font = '600 34px ' + FONT;
+    g.fillStyle = 'rgba(180, 205, 255, .78)';
+    g.fillText('目 的 地', W / 2, 56);
+
+    // 中：大字「广州大学星」
+    g.font = '900 92px ' + FONT;
+    g.shadowColor = 'rgba(255, 205, 70, .95)';
+    g.shadowBlur = 46;
+    g.fillStyle = '#fff6d2';
+    g.fillText('广 州 大 学 星', W / 2, 140);
+    g.shadowBlur = 0;
+    g.fillText('广 州 大 学 星', W / 2, 140);
+
+    // 下：一条金线
+    var lg = g.createLinearGradient(W * 0.2, 0, W * 0.8, 0);
+    lg.addColorStop(0, 'rgba(254,206,14,0)');
+    lg.addColorStop(0.5, 'rgba(254,206,14,.85)');
+    lg.addColorStop(1, 'rgba(254,206,14,0)');
+    g.strokeStyle = lg;
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(W * 0.2, 200);
+    g.lineTo(W * 0.8, 200);
+    g.stroke();
+
+    var tex = new THREE.CanvasTexture(cv);
+    tex.encoding = THREE.sRGBEncoding;
+    tex.anisotropy = 4;
+
+    var mat = new THREE.SpriteMaterial({
+      map: tex, transparent: true, opacity: 0,
+      depthWrite: false, depthTest: false, fog: false
+    });
+    var sp = new THREE.Sprite(mat);
+    sp.renderOrder = 60;
+    sp.scale.set(680, 227, 1);
+    // 摆在星球上方一点
+    sp.position.set(0, 210, 0);
+    planetGroup.add(sp);
+    planetLabel = sp;
+  })();
+
   (function buildPlanet() {
     var R = 140;
 
@@ -2425,6 +2480,16 @@
 
     if (padGroup.userData.ring) {
       padGroup.userData.ring.material.opacity = 0.32 + Math.sin(now * 0.003) * 0.18;
+    }
+
+    // 星球名字：进入太空后缓缓淡入，抵达瞬间拉到最亮
+    if (planetLabel) {
+      var nameOn = state.clock >= historyStartAt() + T.HISTORY_GAP * 2 ? 1 : 0;
+      var curName = planetLabel.material.opacity;
+      // 这里 dt 还没算出来（在下面几行），用固定步长就够 —— 淡入约 1.5 秒
+      planetLabel.material.opacity = curName + (nameOn - curName) * 0.016 * 1.6;
+      // 极慢的上下浮动，别让牌子像钉死的
+      planetLabel.position.y = 210 + Math.sin(now * 0.0009) * 9;
     }
 
     // 校史翻页按钮：只在「校史已经开始、还没抵达」时出现
