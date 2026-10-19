@@ -3243,13 +3243,13 @@
     if (started) {
       if (state.historyIdx < 0) {
         state.historyIdx = 0;
-        state.historyShownAt = now;
+        state.historyShownAt = state.clock;
         showHistory(0);
-      } else if (now - state.historyShownAt > T.HISTORY_GAP) {
+      } else if (state.clock - state.historyShownAt > T.HISTORY_GAP) {
         var next = state.historyIdx + 1;
         if (next < HISTORY.length) {
           state.historyIdx = next;
-          state.historyShownAt = now;
+          state.historyShownAt = state.clock;
           showHistory(next);
         }
       }
@@ -3375,10 +3375,11 @@
     skipFx = { at: performance.now(), item: next, swapped: false };
 
     state.historyIdx = next;
-    // 用**墙钟**记时间点：updateOverlay 判「该翻下一页了」用的是
-    // now - state.historyShownAt，两边必须是同一时间基准。
-    // 这里原来写的是动画时钟的目标值，混用会导致刚跳完又被自动翻一页。
-    state.historyShownAt = performance.now();
+    // 用**动画时钟**记时间点：updateOverlay 判「该翻下一页了」用的也是它，
+    // 两边必须是同一时间源 —— 否则暂停时时钟停了、判断却还在按墙钟走。
+    // （历史教训：曾经为了修「跳完又被自动翻页」把这里改成墙钟，
+    //   结果引入「暂停无效」；根因是时间源不统一，不是选哪个的问题。）
+    state.historyShownAt = state.clock;
     if (els.hint) els.hint.textContent = '已跳到下一节 · 再次轻点可继续';
   }
 
@@ -3398,10 +3399,11 @@
     clockTween = { from: state.clock, to: target, at: performance.now() };
     skipFx = { at: performance.now(), item: prev, swapped: false };
     state.historyIdx = prev;
-    // 用**墙钟**记时间点：updateOverlay 判「该翻下一页了」用的是
-    // now - state.historyShownAt，两边必须是同一时间基准。
-    // 这里原来写的是动画时钟的目标值，混用会导致刚跳完又被自动翻一页。
-    state.historyShownAt = performance.now();
+    // 用**动画时钟**记时间点：updateOverlay 判「该翻下一页了」用的也是它，
+    // 两边必须是同一时间源 —— 否则暂停时时钟停了、判断却还在按墙钟走。
+    // （历史教训：曾经为了修「跳完又被自动翻页」把这里改成墙钟，
+    //   结果引入「暂停无效」；根因是时间源不统一，不是选哪个的问题。）
+    state.historyShownAt = state.clock;
     if (els.hint) els.hint.textContent = '已回到上一节 · 轻点屏幕可继续';
   }
 
@@ -3660,7 +3662,7 @@
       var idx = Math.min(HISTORY.length - 1,
         Math.floor((ms - (T.PRE + T.ASCEND * 0.45)) / T.HISTORY_GAP));
       state.historyIdx = idx;
-      state.historyShownAt = performance.now();
+      state.historyShownAt = state.clock;
       showHistory(idx);
     }
     // 相机与火箭立刻到位，避免插值残留
