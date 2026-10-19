@@ -5,6 +5,54 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>宇宙奶龙大学</title>
+
+<!-- ============================================================
+     域名护栏：不是本域名或其子域就跳回本站
+
+     目的：防止站点被整体镜像/盗链到别的域名上。
+
+     三处**故意**不生效：
+       · file:// （本地双击打开，location.hostname 是空字符串）
+       · IP 直连（局域网调试、直接用服务器 IP 访问）
+       · localhost / *.localhost（本地起 http.server 预览）
+
+     判断放在 <head> 里、尽早执行：命中时直接 replace 走人，
+     后面的 3D 脚本根本不会跑，用户看不到闪一下。
+     ============================================================ -->
+<script>
+(function () {
+  var CANON = 'xn--psszg58cydsdq780c.com';        // 宇宙奶龙大学.com
+  var CANON_UNI = '宇宙奶龙大学.com';              // 同上的 Unicode 写法
+
+  var loc = window.location;
+  // 只有 http(s) 才管；file:// 的 protocol 是 file:
+  if (loc.protocol !== 'http:' && loc.protocol !== 'https:') return;
+
+  var host = (loc.hostname || "").toLowerCase();
+  if (!host) return;                                // 空主机的兜底
+
+  // IPv4：四段数字
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) return;
+  // IPv6：location.hostname 形如 [::1] 或含冒号
+  if (host.indexOf(':') >= 0 || host.charAt(0) === '[') return;
+
+  // 本地预览放行：localhost / xxx.localhost
+  if (host === 'localhost' || /\.localhost$/.test(host)) return;
+
+  // 本域名本身（punycode 与 Unicode 两种写法都认）
+  if (host === CANON || host === CANON_UNI) return;
+
+  // 子域：必须以 '.' + 本域名结尾，
+  // ⚠️ 不能用 indexOf —— 那样 xn--x.com.evil.com 也会被放行
+  var suffix = '.' + CANON;
+  if (host.length > suffix.length && host.slice(-suffix.length) === suffix) return;
+  var suffixUni = '.' + CANON_UNI;
+  if (host.length > suffixUni.length && host.slice(-suffixUni.length) === suffixUni) return;
+
+  // 其余一律跳回本域名，保留路径/查询/锚点
+  loc.replace('https://' + CANON + loc.pathname + loc.search + loc.hash);
+})();
+</script>
 <meta name="description" content="宇宙奶龙大学：乘坐奶龙号从发射台飞向太空，沿途展示广州大学校史——1927 年陈炳权先生创办私立广州大学，2000 年五校合并，2027 年迎来建校一百周年。">
 <!-- 本站只做深色一套，手机浏览器顶栏也跟着变深 -->
 <meta name="theme-color" content="#080b1a">
