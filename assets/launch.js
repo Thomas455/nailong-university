@@ -1826,6 +1826,7 @@
     // 动画时钟（毫秒）。**不是** performance.now() 的差值 ——
     // 见 tick() 里的说明：卡顿帧不能算进动画进度。
     clock: 0,
+    paused: false,        // 空格暂停（见 bindOrbit 末尾）
     t0: 0,
     launched: false,
     arrived: false,
@@ -1864,7 +1865,16 @@
     var cv = canvas;
     var lastX = 0, lastY = 0, pid = null;
 
+    // 区分「拖动环视」和「轻点跳一节」：
+    // 记下按下时的位置和时间，抬手时位移小、时间短就算轻点。
+    var downX = 0, downY = 0, downAt = 0, moved = 0;
+
     function onDown(e) {
+      if (e.target && e.target === cv) {
+        downX = e.clientX; downY = e.clientY;
+        downAt = performance.now();
+        moved = 0;
+      }
       if (!orbit.enabled || state.arrived) return;
       // 从按钮/弹窗上按下就别抢（它们在 canvas 之上，正常不会走到这里，
       // 但 pointerdown 的 target 检查一下更稳）
@@ -1883,6 +1893,7 @@
       var dy = e.clientY - lastY;
       lastX = e.clientX;
       lastY = e.clientY;
+      moved += Math.abs(dx) + Math.abs(dy);
 
       // 0.0042 rad/px ≈ 每 100 像素转 24°，手感比较跟手
       orbit.targetYaw = Math.max(-ORBIT_YAW_MAX,
@@ -1893,12 +1904,31 @@
     }
 
     function onUp(e) {
+      // 轻点：位移 < 10px 且按住 < 350ms —— 跳下一节校史
+      if (e.target === cv && moved < 10 && performance.now() - downAt < 350) {
+        advanceHistory();
+      }
       if (e.pointerId !== pid) return;
       orbit.dragging = false;
       pid = null;
       orbit.lastAt = performance.now();
       try { cv.releasePointerCapture(e.pointerId); } catch (err) {}
     }
+
+    // 空格：暂停 / 继续。41 秒的动画，想停下来细看某一节时很有用。
+    window.addEventListener('keydown', function (e) {
+      if (e.code !== 'Space' && e.key !== ' ') return;
+      var t = e.target;
+      if (t && (t.tagName === 'BUTTON' || t.tagName === 'A' ||
+                t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+      e.preventDefault();
+      state.paused = !state.paused;
+      if (els.hint) {
+        els.hint.textContent = state.paused
+          ? '已暂停 · 按空格继续'
+          : '奶龙号正在飞往广州大学星…';
+      }
+    });
 
     cv.addEventListener('pointerdown', onDown);
     cv.addEventListener('pointermove', onMove);
@@ -2337,7 +2367,7 @@
        ------------------------------------------------------------ */
     var dtRaw = frameLast ? (now - frameLast) : 16;
     frameLast = now;
-    if (!clockFrozen) state.clock += Math.min(dtRaw, 100);
+    if (!clockFrozen && !state.paused) state.clock += Math.min(dtRaw, 100);
     // 帧间隔（封顶 1/20 秒：切后台回来时不会一帧跳太远）
     var dt = trail._last2 ? Math.min(0.05, now / 1000 - trail._last2) : 0.016;
     trail._last2 = now / 1000;
@@ -2678,7 +2708,12 @@
       return;
     }
     if (els.countdown && !els.countdown.hidden) els.countdown.hidden = true;
-    if (els.hint && els.hint.textContent.indexOf('飞往') < 0) {
+    // 暂停时不要每帧把提示改回去，否则「已暂停」一闪就没了
+    if (state.paused && els.hint) {
+      els.hint.textContent = '已暂停 · 按空格继续';
+    } else if (els.hint && els.hint.textContent.indexOf('飞往') < 0 &&
+               els.hint.textContent.indexOf('已暂停') < 0 &&
+               els.hint.textContent.indexOf('已跳到') < 0) {
       els.hint.textContent = '奶龙号正在飞往广州大学星…';
     }
 
@@ -2729,6 +2764,21 @@
      既不用等 30 秒才能走，又保留了叙事节奏。 */
   var goRevealed = false;
   var goCentered = false;
+
+  /* 跳到下一节校史。
+     41 秒的纯被动观看太长 —— 想快的人应该能自己跳。 */
+  function advanceHistory() {
+    if (state.arrived) return;
+    var next = state.historyIdx + 1;
+    if (next >= HISTORY.length) { depart(); return; }
+    // 把动画时钟推到「这一节刚好开始」的位置，
+    // 这样后面的节奏（按钮居中、抵达）也会跟着走，不会只跳一张图。
+    state.clock = historyStartAt() + T.HISTORY_GAP * next + 1;
+    state.historyIdx = next;
+    state.historyShownAt = state.clock;
+    showHistory(next);
+    if (els.hint) els.hint.textContent = '已跳到下一节 · 再次轻点可继续';
+  }
 
   function revealGoBtn() {
     if (goRevealed) return;
