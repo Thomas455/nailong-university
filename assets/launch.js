@@ -1473,6 +1473,7 @@
       })
     );
     earth.add(atmo);
+    earth.userData.atmo = atmo;   // 升空时要动态调它的亮度和尺寸
 
     earth.userData.globe = globe;
   })();
@@ -2474,7 +2475,10 @@
 
     // 发射台：升到一定高度后缩一下再隐藏
     var h = rocket.position.y;
-    var padFade = 1 - clamp((h - 26) / 110, 0, 1);
+    // 地面要比原来淡得早：地球在高度 18 就开始露头，
+    // 而原来看板要淡到 136 才消失 —— 两者重叠，地球弧线被草地挡住。
+    // 改成 12~67，让位给地球。
+    var padFade = 1 - clamp((h - 12) / 55, 0, 1);
     padGroup.visible = padFade > 0.02;
     padGroup.scale.setScalar(1 + (1 - padFade) * 0.18);
 
@@ -2541,10 +2545,20 @@
     }
 
     // 地球：升到高空才露出来
-    var earthVis = clamp((h - 55) / 130, 0, 1);
+    // 地球提前出现：原来要到高度 55 才露头，那时已经快进太空了，
+    // 整段「冲出大气层」看不到任何参照。改成 18 起步、90 到位。
+    var earthVis = clamp((h - 18) / 90, 0, 1);
     earth.visible = earthVis > 0.01;
     earth.position.y = -430 - (1 - earthVis) * 120;
     earth.userData.globe.rotation.y = now * 0.000035;
+
+    // 大气层辉光：穿越那一段明显变亮，过了再收回去 ——
+    // 这是整段升空里唯一的「你正在离开地球」的视觉信号。
+    if (earth.userData.atmo) {
+      var crossBoost = Math.sin(clamp((h - 18) / 150, 0, 1) * Math.PI);
+      earth.userData.atmo.material.opacity = 0.34 + crossBoost * 0.55;
+      earth.userData.atmo.scale.setScalar(1 + crossBoost * 0.035);
+    }
 
     // 参照物：碎石 + 速度线（让前进感成立）
     updateSpaceField(now, st, CRUISE);
