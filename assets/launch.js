@@ -2694,6 +2694,24 @@
      ============================================================ */
   function start() {
     resize();
+    /* ============================================================
+       预热编译
+
+       three.js 的材质是「第一次渲染时才编译着色器」。实测（无头环境）
+       首帧 2.4 秒、第二帧 5.6 秒 —— 真机上也会有一两秒的白屏/卡顿。
+       renderer.compile() 会把场景里所有材质的程序提前编译好，
+       把这段时间从「渲染时卡住」挪到「启动时等一下」。
+       配合 #boot 那层遮罩，用户看到的是「正在点火」，而不是黑屏。
+       ============================================================ */
+    try { renderer.compile(scene, camera); } catch (e) {}
+
+    // 编译完再收起启动遮罩
+    var bootEl = document.getElementById("boot");
+    if (bootEl) {
+      bootEl.classList.add("done");
+      setTimeout(function () { if (bootEl.parentNode) bootEl.parentNode.removeChild(bootEl); }, 900);
+    }
+
     // 时钟不在这里起算 —— tick() 会先跑几帧预热（编译着色器），
     // 预热结束才开始计时。否则首帧耗时会被算进动画进度。
 

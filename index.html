@@ -77,6 +77,48 @@
   }
   #veil.on { opacity: 1; }
 
+  /* ---------- 启动遮罩 ----------
+     three.js 的首帧要编译全部着色器，实测（无头环境）单帧 2.4 秒、
+     第二帧 5.6 秒。这期间如果直接把 canvas 亮出来，用户看到的是黑屏，
+     很容易以为页面挂了。
+     所以先盖一层夜空底 + 一行字，等 renderer.compile() 跑完再淡出。 */
+  #boot {
+    position: fixed; inset: 0; z-index: 6;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 18px;
+    background: radial-gradient(ellipse at 50% 42%, #1b2440 0%, #0b1020 55%, #06080f 100%);
+    transition: opacity .7s ease;
+  }
+  #boot.done { opacity: 0; pointer-events: none; }
+
+  #boot .boot-title {
+    font-size: clamp(15px, 4vw, 19px);
+    font-weight: 800; letter-spacing: .34em;
+    color: rgba(238, 242, 255, .92);
+    text-indent: .34em;
+  }
+  #boot .boot-bar {
+    width: min(190px, 46vw); height: 2px; border-radius: 2px;
+    background: rgba(255, 255, 255, .12); overflow: hidden;
+  }
+  #boot .boot-bar i {
+    display: block; width: 40%; height: 100%; border-radius: 2px;
+    background: linear-gradient(90deg, transparent, #fece0e, transparent);
+    animation: bootSlide 1.05s ease-in-out infinite;
+  }
+  @keyframes bootSlide {
+    0%   { transform: translateX(-110%); }
+    100% { transform: translateX(360%); }
+  }
+  #boot .boot-note {
+    font-size: clamp(10.5px, 2.9vw, 12px);
+    color: rgba(200, 212, 245, .45); letter-spacing: .1em;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #boot .boot-bar i { animation: none; width: 100%; opacity: .5; }
+  }
+
   /* ---------- 覆盖层 ---------- */
   /* 整个 HUD 不吃点击，只有里面的按钮单独开启 ——
      否则透明区域会把 3D 拖拽/点击全挡住。 */
@@ -363,6 +405,13 @@
 <!-- 3D 画布 -->
 <canvas id="scene" aria-hidden="true"></canvas>
 <div id="veil" aria-hidden="true"></div>
+
+<!-- 启动遮罩：着色器编译完成前挡住黑屏 -->
+<div id="boot" role="status" aria-live="polite">
+  <div class="boot-title">宇宙奶龙大学</div>
+  <div class="boot-bar"><i></i></div>
+  <div class="boot-note">奶龙号正在点火…</div>
+</div>
 
 <!-- 覆盖层 UI -->
 <div class="hud" id="hud">
