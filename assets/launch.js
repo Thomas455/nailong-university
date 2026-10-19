@@ -122,6 +122,20 @@
   var camera = new THREE.PerspectiveCamera(50, 1, 0.5, 12000);
   camera.position.set(11, 5, 17);
 
+  /* ============================================================
+     色彩分级
+
+     现在的画面是「渲染出来什么就是什么」，偏中性。
+     电影感通常来自三件事，这里只做最轻的一种：
+       · 暗部压向冷色（蓝紫），亮部推向暖色（金黄）—— 常见的好莱坞调色；
+       · 整体轻微提高对比，让星空的黑色更实。
+
+     实现方式是**屏幕空间的一层混合**，不去动材质：
+     一个加法精灵负责给暗部上冷色，一个乘法层负责压对比。
+     比改后处理管线便宜得多，移动端也扛得住。
+     ============================================================ */
+  var colorGrade = { liftSprite: null, gainSprite: null };
+
   /* ---------- 灯光 ----------
      深空场景的关键：环境光要低，靠主光 + 轮廓光拉开层次。
      环境光一高，什么材质都是一片平灰。 */
@@ -1945,8 +1959,54 @@
   })();
 
   /* ============================================================
-     状态
+     色彩分级（接上面 colorGrade 的说明）
+
+     用两个贴在相机前面的全屏精灵：
+       · lift  —— 加法混合，给暗部垫一点冷色（蓝紫），阴影不再死黑；
+       · gain  —— 乘法混合，把整体轻微压暗，提高对比。
+
+     两者都挂在相机下面，跟着镜头走；depthTest 关掉，永远画在最前面。
      ============================================================ */
+  (function buildColorGrade() {
+    function fullscreenSprite(mode) {
+      var tex = makeTexture(4, 4, function (g) {
+        g.fillStyle = '#ffffff';
+        g.fillRect(0, 0, 4, 4);
+      });
+
+      var isLift = mode === 'lift';
+      var mat = new THREE.SpriteMaterial({
+        map: tex,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+        fog: false,
+        // lift 用加法、gain 用乘法
+        blending: isLift ? THREE.AdditiveBlending : THREE.CustomBlending,
+        color: isLift ? 0x140c24 : 0xffffff
+      });
+      if (!isLift) {
+        mat.blendEquation = THREE.AddEquation;
+        mat.blendSrc = THREE.ZeroFactor;          // 结果 = 目标 × 源色
+        mat.blendDst = THREE.SrcColorFactor;
+      }
+      // ⚠️ lift 必须压得极低。第一版给了 0.10，整个深空被提成灰紫色，画面发灰。
+      //    0.028 只是在阴影里垫一点点冷调，肉眼几乎看不出「加了东西」，
+      //    但黑位不再是一块死黑。
+      mat.opacity = isLift ? 0.028 : 0.93;
+
+      var sp = new THREE.Sprite(mat);
+      sp.renderOrder = 900;
+      // 贴到相机前面一点点，尺寸按 FOV 粗算，后面每帧会跟着相机重算
+      sp.scale.set(2, 2, 1);
+      camera.add(sp);
+      return sp;
+    }
+
+    colorGrade.liftSprite = fullscreenSprite('lift');
+    colorGrade.gainSprite = fullscreenSprite('gain');
+    scene.add(camera);   // 相机必须进场景，挂在它下面的精灵才会被渲染
+  })();
   var state = {
     // 动画时钟（毫秒）。**不是** performance.now() 的差值 ——
     // 见 tick() 里的说明：卡顿帧不能算进动画进度。
@@ -2508,6 +2568,18 @@
     if (ctxLost) { RAF = null; return; }
     RAF = requestAnimationFrame(tick);
     var now = performance.now();
+
+    // 调色层：撑满视野。放在相机前 1 个单位处，
+    // 该距离上的可视高度 = 2 * tan(fov/2) * dist，宽度再乘 aspect。
+    if (colorGrade.liftSprite && colorGrade.gainSprite) {
+      var dGrade = 1;
+      var hGrade = 2 * Math.tan(camera.fov * Math.PI / 360) * dGrade * 1.02;
+      var wGrade = hGrade * camera.aspect * 1.02;
+      colorGrade.liftSprite.position.set(0, 0, -dGrade);
+      colorGrade.gainSprite.position.set(0, 0, -dGrade + 0.001);
+      colorGrade.liftSprite.scale.set(wGrade, hGrade, 1);
+      colorGrade.gainSprite.scale.set(wGrade, hGrade, 1);
+    }
 
     // 星空闪烁：驱动 uTime；uScale 每帧跟着画布高度走，
     // 窗口缩放时点的大小自动正确，不用另外监听 resize。
