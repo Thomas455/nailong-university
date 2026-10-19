@@ -2882,11 +2882,27 @@
      */
   var SKIP_MS = 620;
 
+  // 每次快进后的冷却时间：防止连点、误触把整段校史一口气翻完
+  var SKIP_COOLDOWN_MS = 800;
+  var lastSkipAt = -1e9;
+
   var clockTween = null;   // { from, to, at }
   var skipFx = null;       // { at, item, swapped }
 
   function advanceHistory() {
     if (state.arrived) return;
+
+    /* 两道闸，防误触也防「提前点、事后才生效」 */
+
+    // 闸 1：校史还没开始就不要受理。
+    // 原来没有这个判断 —— 升空过程中点屏幕，advanceHistory 会立刻
+    // 把 clockTween 设好并开始缓推；但那时动画时钟还在升空段，
+    // 等升空完成后这个 tween 才真正见效，表现就是「升空一结束就莫名快进一次」。
+    if (state.clock < historyStartAt()) return;
+
+    // 闸 2：每次快进后冷却 SKIP_COOLDOWN_MS，防连续点、防手抖。
+    var nowMs = performance.now();
+    if (nowMs - lastSkipAt < SKIP_COOLDOWN_MS) return;
     var next = state.historyIdx + 1;
 
     /* 已经在最后一节：点屏幕**不再**直接跳转。
@@ -2895,6 +2911,7 @@
        这里只做两件事：把按钮短暂强调一下，并把提示改成指路。 */
     if (next >= HISTORY.length) {
       if (els.goBtn) {
+      lastSkipAt = nowMs;
         els.goBtn.classList.add('nudge');
         setTimeout(function () {
           if (els.goBtn) els.goBtn.classList.remove('nudge');
@@ -2908,6 +2925,7 @@
 
     var target = historyStartAt() + T.HISTORY_GAP * next + 1;
 
+    lastSkipAt = nowMs;
     clockTween = { from: state.clock, to: target, at: performance.now() };
     skipFx = { at: performance.now(), item: next, swapped: false };
 
