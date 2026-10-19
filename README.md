@@ -40,8 +40,11 @@ assets/gallery.js           卡片翻转 / 作品灯箱
 src/                        学院展位封面图（.webp，文件名 = 学院名）
 works/                      学院作品（一个学院一个目录，含投稿指南.md）
 notice/                     公告源文件（1.txt、2.txt……）
-ring.svg                    文字环的原始文件（已内联进 index.html，页面不单独请求）
 core.webp / core.png        奶龙本体：页面用 webp，png 是无损原件
+assets/launch.js            首页 3D 场景的逻辑与建模（约 2900 行）
+assets/three.min.js         three.js r149（本地 vendor，不走 CDN）
+assets/textures.js          内联成 data URI 的贴图（见第 2.3 节）
+tools/build-textures.py     core.webp + 校徽 → assets/textures.js
 favicon.ico                 浏览器页签图标（16/32/48，由 favicon.png 派生）
 favicon.png                 iOS / 安卓主屏图标（512×512，手工维护的源文件）
 og.png                      微信、QQ、Twitter 分享卡片图（1200×630）
@@ -49,22 +52,23 @@ CNAME                       GitHub Pages 时代的域名绑定文件，现在没
 双手交叉站立.png            奶龙原始素材
 1.txt                       首页顶部随机语录的源文件（一行一句）
 tools/prepare_nailong.py    抠图 → core.png / core.webp
-tools/build_assets.py       文字环 → ring.svg、分享卡片 → tools/og.html
+tools/build_assets.py       分享卡片 → tools/og.html（文字环已随 3D 改版废弃）
 tools/build_favicon.py      favicon.png → favicon.ico（只读 png，不改它）
 tools/build_works_list.py   扫描 works/ 生成 list.txt（能列目录、读修改时间）
 tools/og.html               分享卡片的排版源文件
 tools/preview-core.png      抠图效果的白底预览
 ```
 
-> **想改 ring.svg 的文字？** 直接编辑 `index.html` 里那段 `<svg class="ring">`（35 个
-> `<text>`，每个字转一个角度）。`ring.svg` 只是留个底，改完两边对不上也没关系。
+> 首页现在不用 `ring.svg` 了 —— 文字环随 3D 改版一起撤掉，这个文件已成死文件，
+> 留着只是还没删。
 
 重新生成图片资源（改图之后跑）：
 
 ```powershell
 python tools/prepare_nailong.py    # 从原始素材重新抠图 → core.png / core.webp
-python tools/build_assets.py       # 重新生成 ring.svg 和 og.html 排版
+python tools/build_assets.py       # 重新生成 og.html 排版
 python tools/build_favicon.py      # 从 favicon.png 派生 favicon.ico
+python tools/build-textures.py     # 牛奶龙 + 校徽内联进 assets/textures.js
 ```
 
 ⚠️ **`prepare_nailong.py` 会重写 `core.png` / `core.webp` / `favicon.png`。**
@@ -78,198 +82,61 @@ git push
 
 ---
 
-## 0. 性能优化：为什么首屏只有 2 个请求
+## 0. 性能：首页现在要加载什么
 
-这个站部署在境外，**瓶颈是延迟不是带宽**（整页才 35KB）。同机实测：
+> 这一节原来讲的是「为什么首屏只有 2 个请求」—— 那是**文字环时代的优化**：
+> 内联 ring.svg、精简注释、把首屏压到 html + core.webp 两个文件。
+> 首页换成 three.js 场景之后，那套数字全部作废，这里重写。
 
-| 目标 | 建连 | 首字节 |
+### 首页的请求
+
+| 文件 | 大小 | 说明 |
 | --- | --- | --- |
-| **Cloudflare（本站现在）** | — | **约 0.13s** |
-| GitHub Pages（2026-10 之前用的） | 0.25 ~ 0.46s | **0.49 ~ 0.72s** |
-| 广州大学 / 百度（国内站点） | 0.02 ~ 0.13s | 0.03 ~ 0.13s |
+| `index.html` | ~30 KB | 页面骨架 + HUD + sr-only 正文 |
+| `assets/three.min.js` | 608 KB | three.js r149，**本地 vendor** |
+| `assets/launch.js` | ~95 KB | 场景逻辑与全部建模 |
+| `assets/textures.js` | 124 KB | 内联的贴图（data URI） |
 
-> **下面这些内联优化是在 GitHub Pages 时代做的**，当时的取舍背景是：
-> 一个 RTT 约 0.25 秒，而 **GitHub Pages 只跑 HTTP/1.1**（实测 `HTTP版本=1.1`），
-> 没有多路复用 —— 所以**每个资源都要单独付一次往返**，少一个请求就是少 0.25 秒。
->
-> 换成 Cloudflare 之后，请求数依然值得省（少一个请求总是好的），但**收益的最大头
-> 已经变成"换托管"本身**：0.49s → 0.13s，比这里所有优化加起来还明显。
-> 这些优化留着不吃亏，也顺便让页面在别的静态托管上一样快。
+### 为什么 three.js 不走 CDN
 
-### 做了什么①：把 ring.svg 内联进 HTML
+试过 jsdelivr（能用）和 unpkg（国内经常超时）。问题不在大小，
+在于**这个站面向国内访问**，而 CDN 在中国大陆的可用性不稳定 ——
+首页是整站的入口，一个 600KB 的脚本加载失败就是白屏。
+本地 vendor 让首页不依赖任何第三方域名。
 
-| | 优化前 | 优化后 |
-| --- | --- | --- |
-| 首屏请求数 | 3（html + core.webp + ring.svg） | **2**（html + core.webp） |
-| 首屏传输量 | 23,016 B | 23,960 B（**+944 B**） |
+### 为什么贴图反而内联了
 
-**只多 944 字节，就省掉一整个往返。** 因为 SVG 是纯文本（3,584 B），
-gzip 后仅 519 B，内联进同一个文件几乎不增体积。
+和「不该内联」的直觉相反，这里必须内联：浏览器的 `file://` 跨源保护
+不允许 WebGL 使用来自 `file://` 的图片作纹理。**双击打开 index.html 时
+奶龙和校徽会是空白**，而程序画的「奶龙号」三个字正常 —— 很容易误判成模型问题。
+详见第 2.3 节。
 
-### 做了什么②：注释保持简短
+### 首帧为什么需要预热
 
-注释是给人看的，但每个访客都要跟着下载，所以写得很短：
+three.js 的材质是「第一次渲染时才编译着色器」。实测（无头环境）
+第一帧 2.4 秒、第二帧 5.6 秒 —— 每上一批新对象就再编译一次。
 
-| | 裸大小 | gzip 后 |
-| --- | --- | --- |
-| 精简前的注释（6 段） | 1,593 B | 1,537 B |
-| 现在（5 段，每段 28~56 字符） | 199 B | **~190 B** |
-| **整页** | **18,240 B** | **6,674 B** |
+所以启动时先跑几帧「只渲染、不推进动画」的预热，直到某一帧耗时
+低于 120ms 才开始计时，配合 `renderer.compile()` 和 `#boot` 遮罩，
+用户看到的是「奶龙号正在点火…」而不是黑屏。
 
-比原来那 6 段长篇大论省了约 1.3KB。注释只写在真正需要提醒的地方
-（换域名要改哪、图片路径别加 `/`、奶龙和文字环的叠放顺序）。
-
-CSS 里的 `/* */` 和 JS 注释都保留 —— 那些位置不处理，动刀风险大
-（比如 `https://` 里的 `//` 就会被误伤）。
-
-### 为什么没内联奶龙图（这条是踩坑记录）
-
-一开始我以为「base64 的膨胀会被 gzip 抵消」，**实测证明是错的**：
-
-```
-core.webp 原始      15,584  →  单独 gzip 15,150
-core.webp base64    20,780  →  混进 HTML 后 gzip 15,251   ← 只省 7%
-```
-
-已经压缩过的 WebP，base64 之后 gzip 几乎压不动。内联它会把 HTML 从 23KB
-撑到 **46KB** —— 多传 15KB 只换一次往返，在 0.25s RTT 上不划算（多传 15KB 约 0.05s）。
-所以它继续用独立文件 + `<link rel=preload>` 提前加载。
-
-### 也没内联 favicon（试过，亏了）
-
-内联成 data URI 后浏览器确实不再请求 `/favicon.ico`。但页面 gzip 从
-6.7KB 涨到 **13.2KB**，省下的那个请求**发生在渲染之后**，不挡首屏、
-不挡动画、不挡跳转，用户感觉不到。反过来它是个可缓存的独立文件，
-第二次访问不用重下；内联后每次都得跟着 HTML 重下。净亏，所以外联。
-
-### 摸奶龙：点一下暂停，再点重新计时
-
-徽章是个透明热区（`.hit`），点它会**暂停倒计时**并给出明确反馈：
-
-* 白色圆盘泛粉 + 红色光晕（`--warn`），状态行变红
-* 进度条变红并**停住**
-* 下方浮出「奶龙被摸头了！倒计时已暂停 · 再点一下重新计时」
-* 奶龙左右晃一下（`nudge` 动画）
-
-两条提示（`.pet-msg` / `.resume-msg`）共用一个 `.msg-slot` 占位槽：
-**高度一开始就写死 44px**，两条提示绝对定位叠在里面靠 `opacity` + `visibility` 切换。
-早期版本用 `height:0 → auto` 展开，会把下面的「立即前往」甚至整个徽章顶得上下乱跳。
-
-**再点一下**：进度条**立刻清零**、绿色闪一下（`--go`），下方换成
-「出发！计时重新开始」，然后从零重新跑完整 `DELAY`。
-
-> 清零的实现：进度条的 `fill` 动画挂在 `.timing` 类上（而不是 `.run`），
-> 恢复时先 `restartTiming()`（摘掉再加回，强制回流让动画重播），
-> **然后**才移除 `.paused`。顺序反了的话，进度条会在绿闪那 620ms 里
-> 继续走一段才归零 —— 这正是之前修掉的一个 bug。
-> 用独立类而不是 `.run`，是为了让徽章的入场动画（`pop`）不跟着重播。
-
-「关于」弹窗的暂停是另一套：**接着数**（关闭后从剩余时间继续），和摸奶龙的
-「重新数」不同，所以它用独立的 `aboutLeft` 变量。
-
-### 左下角 GitHub 图标
-
-`.gh-btn` 是个圆形链接，hover 时轻微旋转放大。图标是**内联的官方 GitHub mark**
-（取自 [simple-icons](https://simpleicons.org)，CC0 许可），**不额外发请求**。
-
-`skip()` 里加了 `ghBtn.contains(e.target)` 排除 —— 点它去 GitHub，不会触发跳转。
-
-### 关于「关于」和 GitHub
-
-「关于」在**暂停状态下也能打开**（early return 只挡 `leaving` 和重复打开）。
-如果打开弹窗前就在摸头暂停中，关掉后**维持暂停**，等用户自己再点一次奶龙 ——
-这个状态记在 `aboutWasPetting` 里，不会误触发「接着数」。
-
-GitHub 图标是个普通 `<a target="_blank">`。**点它只会去 GitHub**，
-不会跳去学校官网 —— 因为那个会跟链接抢点击的全局监听已经删掉了（见下）。
-
-### 点空白不再跳转
-
-早期版本有个全局监听：点页面任何地方、按任意键都立刻跳转。它有两个问题：
-
-* 跟页面上的链接打架 —— 点 GitHub 图标会先被它截走，结果跳去了学校官网；
-* 「点到空白处就突然跳走」本身就挺突兀。
-
-**已经移除。** 现在想立刻走的话，点状态行下面的「立即前往」那行字
-（它带 `cursor:pointer` 和 `title` 提示）。倒计时正常走完仍然会自动跳。
-
-### 背景：流动 + 磨砂
-
-三层，全是纯 CSS，**零请求**（改前试过找现成的库，见下）：
-
-| 层 | 类名 | 做什么 |
-| --- | --- | --- |
-| 1（最底） | `.flow` | 5 团彩色光斑各自游动，每团一套独立的 `@keyframes flow1..5`，时长 29~45 秒不等 |
-| 2 | `.frost` | 磨砂玻璃：`backdrop-filter: blur(48px) saturate(160%)`，把下面那层糊成柔和晕染 |
-| 3（最上） | `body::before` | 10 颗星星，深色模式下 5.5 秒一轮明暗闪动（`twinkle`） |
-
-三个 `z-index` 都是负数，所以永远在内容底下，也不会挡点击（都带 `pointer-events:none`）。
-星星放在磨砂层**之上**，否则会被一起糊掉。
-
-> **为什么不用现成的库**：GitHub 上搜到的流动背景方案（`threejs-hero-collection`、
-> `Snow-Flakes`、`zeus-iron-gym` 等）全是 Three.js / WebGL / p5.js 实现，
-> 最小的也要引入 150KB+ 的库 —— 而这个页面总共才 11KB gzip。
-> 「底层流动 + 上层模糊」用纯 CSS 就能做到同样观感，成本 1KB 左右。
-
-> **`backdrop-filter` 的兼容**：Safari 需要 `-webkit-` 前缀（已加）。
-> 不支持的老浏览器用 `@supports not` 退回不透明底色 —— 那时看不到流动效果，
-> 但排版和可读性不受影响。
-
-> **浅色/深色**：浅色模式下光斑 `opacity:.78` + 降饱和，免得彩色晕染干扰阅读；
-> 深色模式下 `opacity:.8`，配上深色底反而更亮眼。
-
-### 顺手修掉的一个浪费
-
-原来 head 里有这么两行：
-
-```html
-<link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
-<link rel="icon" type="image/png" sizes="512x512" href="favicon.png">   ← 删了
-```
-
-第二行会让浏览器**可能去下那张 512×512 的 PNG（93KB！）** 当页签图标。
-现在只保留 `.ico`（内含 16/32/48 三档），`favicon.png` 只留给
-`apple-touch-icon`（仅在「添加到主屏幕」时才拉）。
-
-### 现在没有构建步骤
-
-`index.html` 就是源文件，**直接双击打开就能看，直接改就能用**，
-不需要跑任何脚本。文字环已经内联在里面了（35 个 `<text>`，
-每个字转一个角度）。
-
-只有改图片时才需要跑 `tools/` 里的脚本 —— 那是"重新生成图片资源"，
-不是"构建页面"。
-
-### 还想更快的话
-
-内联已经把这个站能榨的都榨了，再快就得**换托管**（实测数据，测于 2026-10）：
-
-| 方案 | 首字节 | 代价 |
-| --- | --- | --- |
-| COS / EdgeOne 大陆节点 | 0.03s | **要 ICP 备案** |
-| Vercel | 0.11s | 免费、加 CNAME 即可、不用迁 NS |
-| **Cloudflare** | 0.13s | ← **本站现在用的**（已迁 NS） |
-| Netlify | 0.16s | 免费、不用迁 NS |
-| GitHub Pages | 0.49s | 之前用的，国内时快时慢 |
-
-> 从 GitHub Pages（0.49s）换到 Cloudflare（0.13s），首字节快了约 **3.7 倍**。
-> 这是本站做过的最有效的一次提速 —— 比前面所有内联优化加起来还明显，
-> 因为瓶颈一直在跨境 RTT，不在页面体积。
-
----
+> ⚠️ 这里有个踩过的坑：早期用 `now - t0` 当动画进度，
+> 这几秒编译时间被算了进去，一开场就跳到「升空完成」——
+> 倒计时、校史、按钮全部错位。现在动画时钟按**被限制的帧间隔**累加
+> （单帧封顶 100ms），卡顿只会让动画慢一点，不会把进度甩出去。
 
 ## 1. 本地先看效果
 
-**方式一：直接双击 `index.html`** —— 最省事，图片能正常显示（想看演示模式就在地址栏末尾补 `?stay`）
+**方式一：直接双击 `index.html`** —— 能跑，但**奶龙和校徽会显示不出来**。这是浏览器的 `file://` 跨源保护，不是代码问题（详见第 2.3 节）
 
-**方式二：起个本地服务** —— 更贴近线上，方便测 `?stay` 之类的参数
+**方式二：起个本地服务** —— 推荐。和线上环境一致，贴图也能正常显示
 
 ```powershell
 python -m http.server 8801 --directory .
 ```
 
-* <http://127.0.0.1:8801/index.html?stay> —— **演示模式**，不跳转，动画循环播放
-* <http://127.0.0.1:8801/index.html> —— 真跳转，约 5.5 秒后离开
+* 打开后点「出发」才会跳转到广州大学，不点就一直停在太空里
+* <http://127.0.0.1:8801/index.html> —— 点「出发」后才跳转，不再自动离开
 * <http://127.0.0.1:8801/home.html> —— 校园门户（四张卡片）
 * <http://127.0.0.1:8801/show.html> —— 奶龙展览馆（25 个学院）
 * <http://127.0.0.1:8801/notice.html> —— 网站公告
@@ -508,14 +375,16 @@ Cloudflare 在**任何路径深度**都会返回 `404.html`，但地址栏还是
 | --- | --- |
 | 跳转目标 | `index.html` 里 `const TARGET = 'https://www.gzhu.edu.cn/';` |
 | 文案里的校名 | `const NAME = '广州大学';` |
-| 停留/动画时长 | `DELAY`、`EXIT` |
+| 发射/巡航/跳转时长 | `assets/launch.js` 顶部的 `T` 常量（`PRE` / `ASCEND` / `PITCH` / `GLIDE`） |
 | 配色 | `index.html` 顶部 `:root` 里的 CSS 变量（子页面在 `assets/site.css`） |
 | 首页顶部语录 | 改 `1.txt`，一行一句 |
 | 学院名单/顺序 | `show.html` 里的 `COLLEGES` 数组 |
 | 学院作品 | 图片丢进 `works/学院名/`，跑 `tools/build_works_list.py` 生成清单 |
 | 404 文案 | `404.html` 里那两句（`.code` 是那个大号 404） |
 | 公告内容 | `notice/` 里加 txt |
-| 文字环上的字 | `tools/build_assets.py` → `build_ring(text=...)`，重跑脚本 |
+| 校史节点 | `assets/launch.js` 里的 `HISTORY` 数组（8 条，含 2027 终章） |
+| 飞跃短句 | `assets/launch.js` 里的 `FLY_FACTS`（35 条，顺序即出现顺序） |
+| 校史配色 | `assets/launch.js` 里的 `ERA_TONES`（按年代分冷暖） |
 | 奶龙的样子 | 换掉 `双手交叉站立.png`，重跑 `tools/prepare_nailong.py` |
 | 抠图边缘 | `tools/prepare_nailong.py` 里的 `S_LO` / `S_HI` 阈值，配合 `tools/preview-core.png` 调 |
 | 分享卡片 | `tools/build_assets.py` → `build_og_html()`，重跑后用 Edge 无头截图 |
@@ -526,7 +395,8 @@ Cloudflare 在**任何路径深度**都会返回 `404.html`，但地址栏还是
 
 ```powershell
 python tools/prepare_nailong.py    # 奶龙抠图 → core.* / favicon.*
-python tools/build_assets.py       # 文字环 → ring.svg + tools/og.html
+python tools/build_assets.py       # 分享卡片 → tools/og.html
+python tools/build-textures.py     # 奶龙 + 校徽内联进 assets/textures.js
 ```
 
 `og.png` 是用 Edge 无头模式把 `tools/og.html` 截出来的：
@@ -604,7 +474,7 @@ _hmt.push(['_trackEvent', 'page', 'view', location.pathname.replace(/^\//, '')])
 const BUDGET = 1200;   // 保证「打开到跳转」至少经过 1200ms
 ```
 
-* 老老实实等动画播完的（约 5.5 秒）→ 早就超过预算，**一秒都不多等**，用户完全无感；
+* 老老实实等用户看完整个场景（40 秒以上）→ 早就超过预算，**一秒都不多等**，用户完全无感；
 * 提前点击跳过的 → 最多补等几百毫秒，把这次访问救回来；
 * 被广告拦截插件挡掉（`onerror`）→ **一秒都不等**，绝不为了统计拖累用户。
 
@@ -617,7 +487,8 @@ const BUDGET = 1200;   // 保证「打开到跳转」至少经过 1200ms
 | `redirect` | `auto` | 用户等完动画自动跳走 |
 | `redirect` | `skip` | 用户等不及点掉的 |
 
-`skip` 占比高说明动画太长了，可以调小 `DELAY`。
+`skip` 占比高说明动画太长了 —— 现在用户可以轻点跳过、也能直接点「出发」，
+这个指标已经不太能反映「动画太长」了，更多是看用户在第几节按的跳过。
 
 ### 怎么验证
 
@@ -667,7 +538,7 @@ new URL('https://www.宇宙奶龙大学.com/').hostname →  'www.xn--psszg58cyd
 | 旧（博客那个，已不用） | `b27042a7b1bc987eb347a45797bd2c1f` |
 
 两者数据互相独立。要改回合并统计，把 `index.html` 里 `hm.src` 的问号后面换成对应 ID 即可
-（`?stay` 演示模式也能看到统计，方便验证）。
+（停在页面上不点「出发」，统计也会照常上报，方便验证）。
 
 ### 注意事项
 
@@ -782,7 +653,7 @@ Cloudflare 会把它当普通文件发布，不影响任何东西。
 
 1. **实名认证**：域名先完成实名认证，否则 DNSPod 不给解析。
 2. **建桶**：对象存储 COS → 创建存储桶，地域选就近（如 `ap-guangzhou`），权限选「公有读私有写」。
-3. **传文件**：把 `index.html`、`ring.svg`、`core.webp`、`core.png`、`favicon.ico`、`favicon.png`、`og.png` **传到桶的根目录**（`tools/` 和奶龙原图不用传）。
+3. **传文件**：把 `index.html`、`core.webp`、`core.png`、`favicon.ico`、`favicon.png`、`og.png`，以及 `assets/` 整个目录（`three.min.js` / `launch.js` / `textures.js` / `site.css` / `site.js` / `works.js` / `gallery.js` / 校徽图）**传上去**（`tools/` 和奶龙原图不用传）。
 4. **开静态网站**：桶 → 基础配置 → 静态网站 → 开启，索引文档 `index.html`，**错误文档也填 `index.html`**（这样访问不存在的路径也会回到这一页）。
    ⚠️ 但要注意：页面用的是相对路径，所以访问 `域名/a/b` 这种深层路径时，页面能出来、图片会找不到（它会去找 `/a/core.webp`）。
    想彻底干净，就在 CDN 里加一条重定向规则：**路径不含扩展名 → 302 到 `/`**。平时只访问根域名的话可以不管。
@@ -822,7 +693,7 @@ server {
   location / { try_files $uri $uri/ /index.html; }   # 访问不存在的路径也回这一页
 
   location = /index.html { add_header Cache-Control "no-cache"; }   # 改文案要能立刻生效
-  # ring.svg 已经被内联进 index.html，这里留着是为了兼容旧缓存/直接访问
+  # ring.svg 已经废弃（文字环随 3D 改版撤掉），留着只为兼容旧缓存
   location ~* \.(svg|png|webp|ico)$ { expires 7d; add_header Cache-Control "public"; }
 }
 ```
@@ -837,11 +708,13 @@ DNSPod 给 `@` 和 `www` 各加一条 **A 记录**指向服务器公网 IP。
 
 ## 6. 上线自检
 
-- [ ] `https://宇宙奶龙大学.com/?stay` 能看到完整动画，进度条走满、奶龙和文字环都在
+- [ ] 首页能正常发射、进入太空、依次放出 8 节校史
+- [ ] 拖动能环视、轻点能跳一节、空格能暂停
+- [ ] 点「出发」后飞向星球并跳转到广州大学
 - [ ] 奶龙在徽章正中间（不偏左不偏右；`tools/prepare_nailong.py` 跑完会打印偏移量自检）
-- [ ] 不带 `?stay` 时，约 5.5 秒后落到 `https://www.gzhu.edu.cn/`，地址栏不残留本站
+- [ ] 点「出发」后落到 `https://www.gzhu.edu.cn/`，地址栏不残留本站（用的是 `location.replace`）
 - [ ] 手机上打开正常（徽章按 `min(64vw, 44vh, 340px)` 自适应，横竖屏都不溢出）
-- [ ] 深色模式下文字环和「宇宙」星空背景正常（系统切深色即可看到）
+- [ ] 手机竖屏下校史文字在火箭上方，不重叠；分档降级后不卡
 - [ ] 微信里发链接，卡片图正常显示（`og:image` 用的是绝对地址 `https://xn--psszg58cydsdq780c.com/og.png`；**换了域名记得改这一行**，微信抓不到图会退化成纯文字卡片）
 - [ ] 浏览器页签显示奶龙图标（`favicon.ico` + `favicon.png`）
 - [ ] 关掉浏览器 JS 也能跳（页面里有 `<noscript>` 的 meta refresh 兜底）
@@ -864,12 +737,13 @@ git push
 
 | 想改什么 | 改哪儿 |
 | --- | --- |
-| 跳转到哪个学校 | `const TARGET = '...'` |
+| 跳转到哪个学校 | `assets/launch.js` 里的 `TARGET` |
 | 文案里的校名 | `const NAME = '...'` |
-| 动画播多久才跳 | `const DELAY`（停留）、`const EXIT`（离场） |
-| 配色 | `<style>` 里 `:root` 的 CSS 变量（`--warn` 是暂停时的红色） |
-| 摸奶龙的提示文字 | `index.html` 里 `.pet-msg` 那两句 |
-| 文字环上的字 | 内联的 `<svg class="ring">` 里的 35 个 `<text>` |
+| 各段时间 | `assets/launch.js` 顶部的 `T` 常量 |
+| 校史内容 | `HISTORY` 数组（8 条） |
+| 飞跃短句 | `FLY_FACTS`（35 条，顺序即出现顺序） |
+| 校史配色 | `ERA_TONES` |
+| 配色 | `index.html` 里 `:root` 的 CSS 变量 |
 
 **改图片**（换奶龙图、改 favicon）：
 
@@ -899,4 +773,4 @@ GitHub Pages 和 Cloudflare Pages 都会在推上去之后自动重新发布，�
 * 参考站 `中国奶龙大学.com` 的做法是：域名在 Squarespace 上做 **302** 跳到 `nailong.dykey.net` 落地页，再由落地页的 JS 跳到学校官网（大连理工大学）。本站把它简化成「一个静态页 + 前端跳转」，少一跳、更快，也不需要第二个域名。
 * 需要的话也可以给主域名加一条 DNSPod 的「显性 URL 转发」当第一跳，但没必要，多一跳只会更慢。
 * 奶龙素材是你提供的 `双手交叉站立.png`（原图是 WebP 贴图、没有透明通道），`tools/prepare_nailong.py` 按饱和度抠的背景；如果发现边缘有灰边或肚皮被啃掉，调 `S_LO` / `S_HI` 两个阈值再重跑即可。
-* 文字环上的「宇宙奶龙大学·」是 SVG 里一个个定位的 `<text>`，靠系统字体渲染（微软雅黑 / 苹方），所以不会因为加载字体而闪一下。
+* 首页 3D 场景里的所有文字（校史、飞跃短句、「奶龙号」贴花）都是 Canvas 现画再当纹理用的，靠系统字体渲染（微软雅黑 / 苹方），不加载任何网络字体，所以不会闪。
