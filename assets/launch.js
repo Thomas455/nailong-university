@@ -841,46 +841,6 @@
     );
     tipCap.position.y = YTOP + NOSE_H - 0.02;
     rocket.add(tipCap);
-
-    /* ============================================================
-       分级：把尾段（喷管、管线、斜撑、尾翼）收进 stage1
-
-       判断方式很简单：建完之后遍历 root 的子对象，
-       y 坐标低于 1.9 的都属于尾段 —— 这些件本来就是贴着地面的。
-       箭体本身（y ≈ 4.35）和沿箭体的外置导管（标记了 keep）留在二级。
-
-       这样做的好处是不用改动上面几十处 rocket.add(...)：
-       谁属于一级，由「建在哪」自然决定。
-       ============================================================ */
-    var stage1 = new THREE.Group();
-    stage1.name = 'stage1';
-    rocket.add(stage1);
-
-    // 外置导管跨整个箭体，不能跟着一级掉下去
-    pipe.userData.keep = true;
-
-    var tailParts = [];
-    for (var ci = 0; ci < rocket.children.length; ci++) {
-      var ch = rocket.children[ci];
-      if (ch === stage1) continue;
-      if (ch.userData.keep) continue;
-      if (ch.position.y < 1.9) tailParts.push(ch);
-    }
-    for (var ti = 0; ti < tailParts.length; ti++) {
-      stage1.add(tailParts[ti]);
-    }
-    rocket.userData.stage1 = stage1;
-
-    // 一级的材质单独克隆一份：分离后要淡出，
-    // 共用材质的话二级会跟着一起变透明。
-    stage1.traverse(function (o) {
-      if (o.isMesh && o.material) {
-        o.material = o.material.clone();
-        o.material.transparent = true;
-        o.material.opacity = 1;
-        o.material.depthWrite = true;
-      }
-    });
   })();
 
   /* ============================================================
@@ -1888,36 +1848,6 @@
     rocket.position.y = st.y;
     rocket.position.z = st.z;
     rocket.rotation.x = st.rotX;
-
-    /* ---- 一级分离 ----
-       时机放在进入太空、转向进行到一半之后：
-       先看到完整的火箭飞起来，再看到尾段脱离、翻滚、淡出。 */
-    var stage1 = rocket.userData.stage1;
-    if (stage1) {
-      var sepAt = T.PRE + T.ASCEND + 1500;
-      if (el >= sepAt) {
-        var sk = clamp((el - sepAt) / 3200, 0, 1);
-        // 向后（箭体局部 +Z，即尾部方向）掉队，同时轻微下坠
-        stage1.position.set(0, -sk * 16, sk * 120);
-        // 翻滚：绕 X、Z 各转一点，别是死板的下滑
-        stage1.rotation.x = sk * 1.15;
-        stage1.rotation.z = sk * 0.55;
-        // 淡出（一级的材质是克隆过的，不影响二级）
-        var fade = 1 - sk * sk;
-        stage1.traverse(function (o) {
-          if (o.isMesh && o.material && o.material.opacity !== undefined &&
-              o.material.blending !== THREE.AdditiveBlending) {
-            o.material.opacity = fade;
-          }
-        });
-        stage1.visible = sk < 0.99;
-        if (sk > 0.35 && !stage1.userData.nozzleOff) {
-          stage1.userData.nozzleOff = true;
-        }
-      } else {
-        stage1.visible = true;
-      }
-    }
 
     // 垂直阶段微微摇摆（像真火箭的姿态修正）
     rocket.rotation.z = (st.asc < 1 && el >= T.PRE)
