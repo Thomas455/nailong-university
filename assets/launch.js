@@ -34,7 +34,7 @@
   var T = {
     PRE: 2000,         // 发射台待机：点火预热（要求「2 秒后升天」）
     ASCEND: 7000,      // 升空到大气层外
-    PITCH: 2400,       // 太空中侧倾转向
+    PITCH: 4500,       // 太空中侧倾转向（直飞 → 平飞，4.5 秒）
     HISTORY_GAP: 3800, // 校史卡片自动切换间隔
     GLIDE: 4600        // 点击后冲向星球
   };
@@ -1646,6 +1646,10 @@
       it.sprite.material.opacity = 0.22 + Math.random() * 0.20;
     }
 
+    // 按时间顺序发牌：第一轮 0..15，回收时接着 16、17…… 转完一圈再回到 0。
+    // 这样掠过身边的短句是顺着历史往下走的，不是随机跳。
+    var flyCursor = 0;
+
     for (var i = 0; i < FLY_N; i++) {
       var cv = document.createElement('canvas');
       cv.width = CW;
@@ -1663,8 +1667,9 @@
       sp.renderOrder = 12;
       scene.add(sp);
 
-      var item = { sprite: sp, ctx: ctx, tex: tex, fact: (i * 3) % FLY_FACTS.length };
+      var item = { sprite: sp, ctx: ctx, tex: tex, fact: flyCursor };
       paint(item, FLY_FACTS[item.fact]);
+      flyCursor++;
       placeFly(item);
       flyingText.push(item);
     }
@@ -1676,7 +1681,9 @@
         f.sprite.visible = visible;
         if (!visible) continue;
         if (f.sprite.position.z > rz + 40) {
-          f.fact = (f.fact + 7) % FLY_FACTS.length;
+          // 顺序往下发，不跳号
+          f.fact = flyCursor % FLY_FACTS.length;
+          flyCursor++;
           paint(f, FLY_FACTS[f.fact]);
           placeFly(f);
         }
@@ -1799,21 +1806,37 @@
     var el = state.clock;
     var asc = clamp((el - T.PRE) / T.ASCEND, 0, 1);
     var spaceT = Math.max(0, el - T.PRE - T.ASCEND);
-    var pitch = smooth(spaceT / T.PITCH);
+
+    /* ---- 直飞 → 平飞的过渡 ----
+       原来：升空段 rotX 一直是 0、z 一直是 0，
+             asc 到 1 之后再「原地」开始转 —— 视觉上像急刹车 + 原地转身。
+
+       现在：
+         ① 转向提前 PITCH_LEAD 开始，和升空末段重叠，边爬升边压弯；
+         ② 高度补一个 sin(pitch·π) 的弧，转的过程中还在往上拱；
+         ③ 前进速度从转向一开始就介入（真实火箭是重力转弯，
+            不是转完才走），用 pitch² 做缓入，末端正好接上匀速巡航。
+    */
+    var PITCH_LEAD = 900;
+    var pitchSpan = T.PITCH + PITCH_LEAD;
+    var pitch = smooth(clamp((el - (T.PRE + T.ASCEND - PITCH_LEAD)) / pitchSpan, 0, 1));
 
     var y, z, rotX;
     if (el < T.PRE) {
       y = 1.3 + Math.sin(now * 0.045) * 0.03;
       z = 0;
       rotX = 0;
-    } else if (asc < 1) {
-      y = 1.3 + SPACE_Y * easeIn(asc);
-      z = 0;
-      rotX = 0;
     } else {
       rotX = -Math.PI / 2 * pitch;
-      y = SPACE_Y + 1.3 + Math.sin(now * 0.0011) * 2.4;
-      z = -CRUISE * Math.max(0, spaceT - T.PITCH) / 1000;
+
+      // 升空段爬升 + 转向段的弧线拱起
+      y = 1.3 + SPACE_Y * easeIn(asc) + Math.sin(pitch * Math.PI) * 24;
+      // 转向过程中保持一点点呼吸感，稳定后幅度变小
+      y += Math.sin(now * 0.0011) * (0.6 + 1.8 * pitch);
+
+      // 前进：转向一开始就慢慢加速，转向结束时正好接上匀速
+      var settle = Math.max(0, spaceT - T.PITCH);
+      z = -(CRUISE * settle / 1000) - 95 * pitch * pitch;
     }
     return { y: y, z: z, rotX: rotX, asc: asc, spaceT: spaceT, pitch: pitch };
   }
