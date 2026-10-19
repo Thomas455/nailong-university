@@ -2274,9 +2274,15 @@
     transparent: true,
     opacity: 0,          // 由 showHistory / 每帧动画控制
     depthWrite: false,   // 不和星星抢深度
+    // ⚠️ depthTest 必须关掉。
+    // 这张卡片是一个 3D 精灵，和星球、碎石在同一个坐标系里；
+    // 只要它们挡在前面，文字就会被切掉（截图里「私立广州大学创立」的
+    // 「立」整个被星球盖住）。校史是这一段的正文，不应该被装饰物遮住。
+    depthTest: false,
     fog: false
   }));
-  histSprite.renderOrder = 20;
+  // renderOrder 要大于碎石和飞字，保证它最后画、压在最上面
+  histSprite.renderOrder = 50;
   scene.add(histSprite);
 
   // 当前这张字的目标不透明度（淡入淡出用）
@@ -2302,6 +2308,18 @@
     }
     if (line) { g.fillText(line, cx, y + n * lineH); n++; }
     return n;
+  }
+
+  /* 描述文字自适应字号：在 maxW 内一行放得下就用最大字号，放不下就降档。
+     这样「抗战期间七度迁徙仍办学不辍……」这种长句不会折成两行。 */
+  function fitDescFont(g, text, maxW) {
+    var sizes = [36, 32, 29, 26];
+    for (var i = 0; i < sizes.length; i++) {
+      g.font = '600 ' + sizes[i] + 'px ' + FONT;
+      if (g.measureText(text).width <= maxW) return sizes[i];
+    }
+    g.font = '600 26px ' + FONT;
+    return 26;
   }
 
   function drawHistoryTexture(item, idx, total) {
@@ -2389,7 +2407,10 @@
       g.shadowColor = 'rgba(0,0,0,.95)';
       g.shadowBlur = 20;
       g.fillStyle = 'rgba(226,234,255,.88)';
-      wrapText(g, item.d, CX, 350, W - 150, 48);
+      // 按文字长度自动缩字号：一行放得下就用 36px，放不下依次缩到 32/29，
+      // 不要折成两行 —— 描述只有一句，折行会把最后两个字挤到第二行，很难看。
+      fitDescFont(g, item.d, W - 90);
+      wrapText(g, item.d, CX, 350, W - 90, 48);
       g.restore();
 
       rule(410, 210, 0.5);
@@ -2438,7 +2459,8 @@
     g.shadowColor = 'rgba(0,0,0,.95)';
     g.shadowBlur = 20;
     g.fillStyle = 'rgba(214,224,255,.84)';
-    wrapText(g, item.d, CX, 344, W - 160, 48);
+    fitDescFont(g, item.d, W - 100);
+    wrapText(g, item.d, CX, 344, W - 100, 48);
     g.restore();
 
     // ---- 底部：进度菱形（第几条 / 共几条）----
