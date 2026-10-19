@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
 <meta name="baidu-site-verification" content="codeva-4BVXCTJLWq" />
@@ -489,6 +489,34 @@
   /* ---------- 兜底：没有 WebGL / 没有 three.js ---------- */
   .fallback { display: none; }
   body.no-3d .fallback { display: block; }
+
+  /* 降级页里的校史正文 */
+  .fallback-hist {
+    margin: 26px auto 0;
+    max-width: 460px;
+    text-align: left;
+    font-size: 13.5px;
+    line-height: 1.85;
+    color: rgba(228, 236, 255, .80);
+  }
+  .fallback-hist h2 {
+    font-size: 13px; font-weight: 700; letter-spacing: .18em;
+    color: rgba(254, 206, 14, .92);
+    margin: 0 0 12px; text-align: center;
+  }
+  .fallback-hist ul { list-style: none; margin: 0; padding: 0; }
+  .fallback-hist li {
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, .07);
+  }
+  .fallback-hist li b {
+    display: inline-block; min-width: 5.6em;
+    color: rgba(254, 206, 14, .92); font-weight: 800;
+  }
+  .fallback-src {
+    margin: 12px 0 0; text-align: center;
+    font-size: 11px; color: rgba(190, 205, 240, .45);
+  }
   body.no-3d #scene { display: none; }
   body.no-3d .hud {
     pointer-events: auto;
@@ -568,6 +596,24 @@
       <h1>宇宙奶龙大学</h1>
       <p>你的浏览器没能启用 3D 显示。<br>奶龙号已经准备好，直接出发吧。</p>
       <a class="go" href="https://www.gzhu.edu.cn/">立即前往广州大学</a>
+
+      <!-- 3D 跑不起来时，把校史正文补在这里。
+           原来降级页只有一句话 + 一个链接，等于把 8 条校史全丢了；
+           而这些内容本来就是这页最有价值的部分。 -->
+      <div class="fallback-hist">
+        <h2>广州大学校史</h2>
+        <ul>
+          <li><b>1927</b> 陈炳权先生创办私立广州大学，定校训「博学笃行」</li>
+          <li><b>1944</b> 抗战期间七度迁徙仍办学不辍；全校师生为抗日捐献战斗机</li>
+          <li><b>1953–1985</b> 广州教育、广州师范等五所市属高校相继创办</li>
+          <li><b>2000</b> 五校合并，组建新的广州大学，「博学笃行、与时俱进」</li>
+          <li><b>2005</b> 主体迁入广州大学城，办学条件根本性改善</li>
+          <li><b>2006</b> 被增列为博士学位授予单位</li>
+          <li><b>2018</b> 工程学首次进入 ESI 全球前 1%，实现零的突破</li>
+          <li><b>2027</b> 建校一百周年</li>
+        </ul>
+        <p class="fallback-src">资料来源：广州大学校史 · 百年校庆公告（第一号）</p>
+      </div>
     </div>
   </div>
 </div>
