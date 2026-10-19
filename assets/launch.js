@@ -176,6 +176,94 @@
   })();
 
   /* ============================================================
+     星云
+     几团大面积、极低透明度、加法混合的云，压在星空后面当背景。
+     做法：用 Canvas 画一张「多层柔和光斑」的云图，再拉到很大的尺寸。
+
+     ⚠️ 尺度和透明度都要克制：
+        · 太亮会把星星糊掉，整个背景变成一块脏色；
+        · sprite 必须跟着相机走，否则飞着飞着就穿出去了。
+     ============================================================ */
+  var nebulaGroup = new THREE.Group();
+  nebulaGroup.frustumCulled = false;
+  scene.add(nebulaGroup);
+
+  (function buildNebula() {
+    // 一张「云」：若干半径/透明度随机的柔和光斑叠在一起，
+    // 边缘用 radial gradient 收到 0，避免出现硬边。
+    function makeCloud(seed, tint) {
+      return makeTexture(512, 512, function (g, w, h) {
+        g.clearRect(0, 0, w, h);
+        var rnd = seed;
+        function rand() { rnd = (rnd * 1103515245 + 12345) & 0x7fffffff; return rnd / 0x7fffffff; }
+
+        // 底层：一大团很淡的底光
+        var base = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+        base.addColorStop(0, 'rgba(' + tint + ',0.34)');
+        base.addColorStop(0.42, 'rgba(' + tint + ',0.14)');
+        base.addColorStop(0.72, 'rgba(' + tint + ',0.04)');
+        base.addColorStop(1, 'rgba(' + tint + ',0)');
+        g.fillStyle = base;
+        g.fillRect(0, 0, w, h);
+
+        // 上层：40 团大小不一的亮斑，让云的内部有明暗层次
+        for (var i = 0; i < 40; i++) {
+          var cx = w * (0.18 + rand() * 0.64);
+          var cy = h * (0.18 + rand() * 0.64);
+          var r = 26 + rand() * 120;
+          var a = 0.05 + rand() * 0.14;
+          var gg = g.createRadialGradient(cx, cy, 0, cx, cy, r);
+          gg.addColorStop(0, 'rgba(255,255,255,' + a.toFixed(3) + ')');
+          gg.addColorStop(0.45, 'rgba(' + tint + ',' + (a * 0.55).toFixed(3) + ')');
+          gg.addColorStop(1, 'rgba(' + tint + ',0)');
+          g.fillStyle = gg;
+          g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
+        }
+
+        // 几道暗纹，像尘埃带
+        g.globalCompositeOperation = 'destination-out';
+        for (var k = 0; k < 7; k++) {
+          var dx = w * (0.1 + rand() * 0.8);
+          var dy = h * (0.1 + rand() * 0.8);
+          var dr = 40 + rand() * 110;
+          var dg = g.createRadialGradient(dx, dy, 0, dx, dy, dr);
+          dg.addColorStop(0, 'rgba(0,0,0,' + (0.10 + rand() * 0.22).toFixed(3) + ')');
+          dg.addColorStop(1, 'rgba(0,0,0,0)');
+          g.fillStyle = dg;
+          g.beginPath(); g.arc(dx, dy, dr, 0, Math.PI * 2); g.fill();
+        }
+        g.globalCompositeOperation = 'source-over';
+      });
+    }
+
+    // 冷色调为主，掺一点紫和青 —— 和站点的深蓝底、金色主色能搭上
+    var clouds = [
+      { tint: '90,130,255', seed: 7331, pos: [-1500, 300, -2400], size: 6200, op: 0.40 },
+      { tint: '150,110,255', seed: 9127, pos: [1900, -500, -2900], size: 7200, op: 0.34 },
+      { tint: '60,190,220', seed: 4451, pos: [-2200, -700, 1500], size: 5600, op: 0.30 },
+      { tint: '255,150,190', seed: 2237, pos: [2400, 900, 1600], size: 5200, op: 0.22 },
+      { tint: '120,160,255', seed: 8803, pos: [600, 1800, 2600], size: 6600, op: 0.26 }
+    ];
+
+    for (var i = 0; i < clouds.length; i++) {
+      var c = clouds[i];
+      var sp = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: makeCloud(c.seed, c.tint),
+        transparent: true,
+        opacity: c.op,
+        depthWrite: false,
+        depthTest: false,            // 永远在最后面，不和火箭/星球抢深度
+        blending: THREE.AdditiveBlending,
+        fog: false
+      }));
+      sp.position.set(c.pos[0], c.pos[1], c.pos[2]);
+      sp.scale.set(c.size, c.size, 1);
+      sp.renderOrder = -100;         // 最先画，当背景
+      nebulaGroup.add(sp);
+    }
+  })();
+
+  /* ============================================================
      发射台
      ============================================================ */
   var padGroup = new THREE.Group();
@@ -206,11 +294,25 @@
       }
     });
 
+    // 远处淡出用的 alpha 图：中心不透明白，越往外越透。
+    // 不加这层的话，直径 1000+ 的圆盘会在远处切出一道笔直的硬地平线，
+    // 竖屏手机上尤其难看（下半屏是一整块暗色平板）。
+    var fadeTex = makeTexture(512, 512, function (g, w, h) {
+      var grd = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+      grd.addColorStop(0, '#ffffff');
+      grd.addColorStop(0.40, '#ffffff');
+      grd.addColorStop(0.60, '#a0a0a0');
+      grd.addColorStop(0.80, '#303030');
+      grd.addColorStop(1, '#000000');
+      g.fillStyle = grd; g.fillRect(0, 0, w, h);
+    });
+
     var ground = new THREE.Mesh(
       new THREE.CircleGeometry(520, 96),
       new THREE.MeshStandardMaterial({
         map: groundTex, roughness: 0.94, metalness: 0.05,
-        color: 0x4a5270
+        color: 0x4a5270,
+        alphaMap: fadeTex, transparent: true, depthWrite: false
       })
     );
     ground.rotation.x = -Math.PI / 2;
@@ -888,7 +990,7 @@
       pz = lerp(bZ, cZ, m);
 
       lx = 0;
-      ly = lerp(SPACE_Y + 4.7, st.y + 1.5, m);
+      ly = lerp(SPACE_Y + 4.7, st.y + 6.5, m);
       lz = lerp(0, st.z - 8, m);
     }
 
@@ -910,6 +1012,7 @@
   function updateWorld(now, st) {
     // 星空跟着相机 —— 无限远的感觉
     starField.position.copy(camera.position);
+    nebulaGroup.position.copy(camera.position);
 
     // 发射台：升到一定高度后缩一下再隐藏
     var h = rocket.position.y;
@@ -920,6 +1023,14 @@
     if (padGroup.userData.ring) {
       padGroup.userData.ring.material.opacity = 0.32 + Math.sin(now * 0.003) * 0.18;
     }
+
+    // 校史文字：定位 + 淡入淡出
+    var dt = Math.min(0.05, (now - updateWorld._last) / 1000 || 0.016);
+    updateWorld._last = now;
+    placeHistorySprite(dt);
+    var cur = histSprite.material.opacity;
+    histSprite.material.opacity = cur + (histTargetOpacity - cur) * Math.min(1, dt * 5.5);
+    histSprite.visible = histSprite.material.opacity > 0.01;
 
     // 地球：升到高空才露出来
     var earthVis = clamp((h - 55) / 130, 0, 1);
@@ -1021,6 +1132,134 @@
     { y: '2017 至今', t: '高水平大学建设', d: '入选广东省「冲一流、补短板、强特色」提升计划' }
   ];
 
+  /* ============================================================
+     校史文字：直接画在 3D 星空里，而不是网页上的一张卡片
+
+     做法：把文字画到 canvas → 当纹理 → 贴到一个 Sprite 上。
+     Sprite 永远面向相机，所以文字始终可读；
+     但它确实位于场景中（有透视、有前后遮挡关系、星星在它周围），
+     读起来就是「星空里浮着的字」。
+
+     只用一个 canvas + 一张纹理：每次换词重画一遍，
+     比给 7 条校史各建一张纹理省 10MB 显存。
+     ============================================================ */
+  var histCanvas = document.createElement('canvas');
+  histCanvas.width = 1024;
+  histCanvas.height = 448;
+  var histCtx = histCanvas.getContext('2d');
+  var histTex = new THREE.CanvasTexture(histCanvas);
+  histTex.encoding = THREE.sRGBEncoding;
+  histTex.anisotropy = 4;
+
+  var histSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: histTex,
+    transparent: true,
+    opacity: 0,          // 由 showHistory / 每帧动画控制
+    depthWrite: false,   // 不和星星抢深度
+    fog: false
+  }));
+  histSprite.renderOrder = 20;
+  scene.add(histSprite);
+
+  // 当前这张字的目标不透明度（淡入淡出用）
+  var histTargetOpacity = 0;
+  var histFloat = 0;     // 轻微漂移的相位
+
+  var FONT = '"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",sans-serif';
+
+  // 按最大宽度折行，返回实际行数
+  function wrapText(g, text, cx, y, maxW, lineH) {
+    var chars = String(text).split('');
+    var line = '';
+    var n = 0;
+    for (var i = 0; i < chars.length; i++) {
+      var test = line + chars[i];
+      if (g.measureText(test).width > maxW && line) {
+        g.fillText(line, cx, y + n * lineH);
+        line = chars[i];
+        n++;
+      } else {
+        line = test;
+      }
+    }
+    if (line) { g.fillText(line, cx, y + n * lineH); n++; }
+    return n;
+  }
+
+  function drawHistoryTexture(item) {
+    var g = histCtx, W = histCanvas.width;
+    g.clearRect(0, 0, W, histCanvas.height);
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+
+    // ---- 年份：金色，带辉光 ----
+    g.save();
+    g.font = '900 148px ' + FONT;
+    g.shadowColor = 'rgba(254,206,14,.9)';
+    g.shadowBlur = 56;
+    g.fillStyle = '#fece0e';
+    g.fillText(item.y, W / 2, 104);
+    // 再描一遍加强辉光
+    g.shadowBlur = 92;
+    g.fillStyle = 'rgba(254,206,14,.55)';
+    g.fillText(item.y, W / 2, 104);
+    g.restore();
+
+    // ---- 标题：白色，冷色辉光 ----
+    g.save();
+    g.font = '800 72px ' + FONT;
+    g.shadowColor = 'rgba(110,160,255,.85)';
+    g.shadowBlur = 40;
+    g.fillStyle = '#eef1ff';
+    g.fillText(item.t, W / 2, 226);
+    g.restore();
+
+    // ---- 描述：浅灰，深色描边保证在星空上也读得清 ----
+    g.save();
+    g.font = '600 38px ' + FONT;
+    g.shadowColor = 'rgba(0,0,0,.95)';
+    g.shadowBlur = 22;
+    g.fillStyle = 'rgba(226,233,255,.86)';
+    wrapText(g, item.d, W / 2, 300, W - 110, 54);
+    g.restore();
+
+    histTex.needsUpdate = true;
+  }
+
+  /* 把精灵摆到「相机前方偏左上」的位置，并按屏幕尺寸换算大小。
+     每帧调用 —— 这样它在透视里始终跟着画面，又不会飞出视野。 */
+  function placeHistorySprite(dt) {
+    var dist = 150;
+    var vFov = camera.fov * Math.PI / 180;
+    var visH = 2 * dist * Math.tan(vFov / 2);
+    var visW = visH * camera.aspect;
+
+    var narrow = camera.aspect < 0.85;
+    var wFrac = narrow ? 0.80 : 0.50;
+    var offXFrac = narrow ? 0 : -0.16;
+    var offYFrac = narrow ? 0.15 : 0.17;
+
+    var w = visW * wFrac;
+    var h = w * (histCanvas.height / histCanvas.width);
+    histSprite.scale.set(w, h, 1);
+
+    // 相机局部坐标 → 世界坐标
+    var fwd = new THREE.Vector3();
+    camera.getWorldDirection(fwd);
+    var right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0)).normalize();
+    var up = new THREE.Vector3().crossVectors(right, fwd).normalize();
+
+    histFloat += dt;
+    // 很轻的上下漂浮，让它像悬在太空里
+    var bob = Math.sin(histFloat * 0.9) * (visH * 0.008);
+
+    var p = camera.position.clone()
+      .addScaledVector(fwd, dist)
+      .addScaledVector(right, visW * offXFrac)
+      .addScaledVector(up, visH * offYFrac + bob);
+    histSprite.position.copy(p);
+  }
+
   // 校史从升空进行到一半时开始放，让起飞那几秒画面干净
   function historyStartAt() {
     return T.PRE + T.ASCEND * 0.45;
@@ -1058,11 +1297,10 @@
 
     // --- 校史：到点换下一张 ---
     var started = el >= historyStartAt();
-    if (started && els.history) {
+    if (started) {
       if (state.historyIdx < 0) {
         state.historyIdx = 0;
         state.historyShownAt = now;
-        els.history.hidden = false;
         showHistory(0);
       } else if (now - state.historyShownAt > T.HISTORY_GAP) {
         var next = state.historyIdx + 1;
@@ -1089,18 +1327,10 @@
 
   function showHistory(i) {
     var h = HISTORY[i];
-    if (!els.year) return;
-    els.year.textContent = h.y;
-    els.title.textContent = h.t;
-    els.text.textContent = h.d;
-    els.history.classList.remove('in');
-    void els.history.offsetWidth;
-    els.history.classList.add('in');
-
-    if (els.dots) {
-      var d = els.dots.children;
-      for (var k = 0; k < d.length; k++) d[k].classList.toggle('on', k <= i);
-    }
+    // 画到 3D 精灵上（不再用网页卡片）
+    drawHistoryTexture(h);
+    histTargetOpacity = 1;
+    histFloat = 0;
   }
 
   var goRevealed = false;
@@ -1111,7 +1341,6 @@
       els.goBtn.hidden = false;
       els.goBtn.classList.add('show');
     }
-    if (els.history) els.history.classList.add('dim');
     if (els.hint) els.hint.textContent = '奶龙号已抵达广州大学星';
   }
 
@@ -1124,7 +1353,7 @@
     state.glideFrom = { x: camera.position.x, y: camera.position.y, z: camera.position.z };
 
     if (els.goBtn) els.goBtn.classList.add('gone');
-    if (els.history) els.history.classList.add('hidden');
+    histTargetOpacity = 0;                 // 校史文字淡出
     if (els.hint) els.hint.classList.add('gone');
     if (els.hud) els.hud.classList.add('gone');
     if (els.countdown) els.countdown.hidden = true;
@@ -1222,7 +1451,7 @@
         Math.floor((ms - (T.PRE + T.ASCEND * 0.45)) / T.HISTORY_GAP));
       state.historyIdx = idx;
       state.historyShownAt = performance.now();
-      if (els.history) { els.history.hidden = false; showHistory(idx); }
+      showHistory(idx);
     }
     // 相机与火箭立刻到位，避免插值残留
     var now = performance.now();

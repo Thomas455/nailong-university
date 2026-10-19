@@ -119,18 +119,18 @@
   .quote.on { animation: quoteIn .5s ease-out; }
 
   /* ---------- 倒计时 ---------- */
-  /* 绝对居中，不参与 flex 排布 —— 否则它 hidden 之后会把下面的
-     校史卡片顶到顶部去（踩过这个坑）。 */
+  /* 做成标题下方的小徽章，而不是铺满屏幕的大数字 ——
+     巨大的数字会和火箭重叠，桌面和手机上都难看。 */
   #countdown {
-    position: fixed; left: 50%; top: 46%;
-    transform: translate(-50%, -50%);
-    font-size: clamp(52px, 16vw, 108px); font-weight: 900;
-    line-height: 1; letter-spacing: .04em;
-    color: var(--ink);
-    text-shadow: 0 0 40px rgba(254, 206, 14, .65), 0 0 90px rgba(254, 206, 14, .35),
-                 0 4px 30px rgba(0, 0, 0, .9);
+    align-self: center;
+    font: 800 clamp(12px, 3.4vw, 14px)/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    letter-spacing: .18em;
+    padding: 6px 14px 6px 16px;
+    border-radius: 999px;
+    color: #3a2c00;
+    background: var(--ink);
+    box-shadow: 0 0 22px rgba(254, 206, 14, .55);
     pointer-events: none;
-    z-index: 12;
   }
   #countdown.pulse { animation: cdPulse .55s cubic-bezier(.3, 1.6, .6, 1); }
   #countdown[hidden] { display: none; }
@@ -143,49 +143,7 @@
     display: flex; flex-direction: column; align-items: center;
     gap: 8px;
   }
-  .history {
-    margin: 0 auto;
-    width: min(560px, calc(100vw - 36px));
-    padding: 16px 20px 14px;
-    border-radius: 18px;
-    /* 实底 + 描边：3D 背景一直在变，纯文字对比度没法保证 */
-    background: rgba(13, 18, 36, .82);
-    border: 1px solid rgba(254, 206, 14, .28);
-    box-shadow: 0 18px 50px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 255, 255, .05);
-    -webkit-backdrop-filter: blur(14px) saturate(140%);
-    backdrop-filter: blur(14px) saturate(140%);
-    pointer-events: none;
-    transition: opacity .5s, transform .5s;
-  }
-  .history[hidden] { display: none; }
-  .history.dim { opacity: .55; }
-  .history.hidden { opacity: 0; transform: translateY(14px); }
-  .history.in { animation: cardIn .55s cubic-bezier(.2, .9, .3, 1); }
 
-  .h-year {
-    font-size: clamp(19px, 5.2vw, 24px); font-weight: 900;
-    color: var(--ink); letter-spacing: .06em;
-    text-shadow: 0 0 22px rgba(254, 206, 14, .4);
-  }
-  .h-title {
-    margin-top: 3px;
-    font-size: clamp(14px, 4vw, 16px); font-weight: 800; color: var(--fg);
-  }
-  .h-text {
-    margin-top: 7px;
-    font-size: clamp(12.5px, 3.4vw, 13.5px); line-height: 1.75; color: rgba(238, 241, 255, .72);
-  }
-  .h-dots { display: flex; gap: 6px; margin-top: 12px; }
-  .h-dots i {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: rgba(238, 241, 255, .18);
-    transition: background .3s, box-shadow .3s, transform .3s;
-  }
-  .h-dots i.on {
-    background: var(--ink);
-    box-shadow: 0 0 10px rgba(254, 206, 14, .8);
-    transform: scale(1.25);
-  }
 
   /* ---------- 悬浮「出发」按钮 ---------- */
   .go-btn {
@@ -193,9 +151,10 @@
     transform: translate(-50%, -50%) scale(.85);
     z-index: 20;
     display: flex; align-items: center; gap: 10px;
-    padding: 16px 34px;
+    padding: 15px 30px;
+    white-space: nowrap;
     border: 0; border-radius: 999px;
-    font: inherit; font-size: clamp(15px, 4.2vw, 17px); font-weight: 800; letter-spacing: .08em;
+    font: inherit; font-size: clamp(14px, 3.9vw, 17px); font-weight: 800; letter-spacing: .06em;
     color: #3a2c00;
     background: linear-gradient(180deg, #ffe066 0%, #fece0e 55%, #e8b400 100%);
     box-shadow: 0 0 0 1px rgba(255, 255, 255, .35) inset,
@@ -301,10 +260,9 @@
   /* ---------- 动画 ---------- */
   @keyframes pulseDot { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
   @keyframes cdPulse {
-    from { transform: translate(-50%, -50%) scale(1.55); opacity: 0; }
-    to   { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    from { transform: scale(1.35); opacity: .2; }
+    to   { transform: scale(1); opacity: 1; }
   }
-  @keyframes cardIn { from { opacity: 0; transform: translateY(10px); } }
   @keyframes quoteIn { from { opacity: 0; transform: translateY(3px); } }
   @keyframes goBreathe {
     0%, 100% { box-shadow: 0 0 0 1px rgba(255,255,255,.35) inset,
@@ -318,7 +276,7 @@
 
   /* ---------- 减少动态效果 ---------- */
   @media (prefers-reduced-motion: reduce) {
-    .brand .dot, .go-btn.show, .history.in, .quote.on { animation: none; }
+    .brand .dot, .go-btn.show, .quote.on { animation: none; }
     #veil { transition: none; }
   }
 
@@ -347,11 +305,7 @@
     background: var(--ink); color: #3a2c00; font-weight: 800; text-decoration: none;
   }
 
-  /* 小屏：历史卡片更紧凑，别把屏幕占满 */
-  @media (max-height: 620px) {
-    .history { padding: 12px 16px 10px; }
-    .h-text { display: none; }
-  }
+
 </style>
 </head>
 <body>
@@ -368,21 +322,15 @@
       宇宙奶龙大学
     </div>
     <p class="quote" id="quote" role="status" aria-live="polite" title="点一下换一句"></p>
+    <div id="countdown" hidden aria-hidden="true"></div>
   </div>
-
-  <div id="countdown" hidden aria-hidden="true"></div>
 
   <!-- 底部一组：校史卡片 + 提示。
        套一层 .bottom 用 margin-top:auto 压到底部，
        否则校史卡片隐藏时提示会顶到标题下面去。 -->
   <div class="bottom">
-    <section class="history" id="history" hidden aria-live="polite">
-      <div class="h-year" id="history-year"></div>
-      <div class="h-title" id="history-title"></div>
-      <p class="h-text" id="history-text"></p>
-      <div class="h-dots" id="history-dots" aria-hidden="true"></div>
-    </section>
-
+    <!-- 校史不再是网页卡片 —— 它现在是画在 3D 星空里的发光文字
+         （见 assets/launch.js 的 histSprite）。这里只留状态提示。 -->
     <p class="hint" id="hint">奶龙号正在飞往广州大学星…</p>
   </div>
 
@@ -451,8 +399,6 @@
     document.body.classList.add('no-3d');
     var hud = document.getElementById('hud');
     if (hud) hud.classList.remove('gone');
-    var hist = document.getElementById('history');
-    if (hist) hist.hidden = true;
     var cd = document.getElementById('countdown');
     if (cd) cd.hidden = true;
     var gb = document.getElementById('go-btn');
