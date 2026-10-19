@@ -2262,9 +2262,25 @@
     var dt = Math.min(0.05, (now - updateWorld._last) / 1000 || 0.016);
     updateWorld._last = now;
     placeHistorySprite(dt);
-    var cur = histSprite.material.opacity;
-    histSprite.material.opacity = cur + (histTargetOpacity - cur) * Math.min(1, dt * 5.5);
-    histSprite.visible = histSprite.material.opacity > 0.01;
+    // 跳节过渡：先用 130ms 快速淡出，藏起来之后换图，再让它自然淡入。
+    // 不这样做的话两张文字会在中间硬切一下，很跳。
+    if (skipFx) {
+      var se = now - skipFx.at;
+      if (se < 130) {
+        histSprite.material.opacity = Math.max(0, 1 - se / 130);
+        histSprite.visible = true;
+      } else {
+        if (!skipFx.swapped) {
+          skipFx.swapped = true;
+          showHistory(skipFx.item);          // 此刻不可见，换图不会闪
+        }
+        if (se > 130 + SKIP_MS * 0.55) skipFx = null;
+      }
+    } else {
+      var cur = histSprite.material.opacity;
+      histSprite.material.opacity = cur + (histTargetOpacity - cur) * Math.min(1, dt * 5.5);
+      histSprite.visible = histSprite.material.opacity > 0.01;
+    }
 
     // 地球：升到高空才露出来
     var earthVis = clamp((h - 55) / 130, 0, 1);
@@ -2386,7 +2402,18 @@
        ------------------------------------------------------------ */
     var dtRaw = frameLast ? (now - frameLast) : 16;
     frameLast = now;
-    if (!clockFrozen && !state.paused) state.clock += Math.min(dtRaw, 100);
+    if (clockTween) {
+      // smoothstep：两端慢、中间快，比线性更像"滑过去"而不是"弹过去"
+      var tk = Math.min(1, (now - clockTween.at) / SKIP_MS);
+      var te = tk * tk * (3 - 2 * tk);
+      state.clock = clockTween.from + (clockTween.to - clockTween.from) * te;
+      if (tk >= 1) {
+        state.clock = clockTween.to;
+        clockTween = null;
+      }
+    } else if (!clockFrozen && !state.paused) {
+      state.clock += Math.min(dtRaw, 100);
+    }
     // 帧间隔（封顶 1/20 秒：切后台回来时不会一帧跳太远）
     var dt = trail._last2 ? Math.min(0.05, now / 1000 - trail._last2) : 0.016;
     trail._last2 = now / 1000;
@@ -2789,17 +2816,34 @@
   var goCentered = false;
 
   /* 跳到下一节校史。
-     41 秒的纯被动观看太长 —— 想快的人应该能自己跳。 */
+
+     41 秒的纯被动观看太长 —— 想快的人应该能自己跳。
+
+     关键是**不能瞬移时钟**：原来直接把 state.clock 设成目标值，
+     火箭、相机、星空参照物全都一帧跳过去，看起来像卡了一下。
+     现在改成两件事同时做：
+
+       · 时钟在 SKIP_MS 内用 smoothstep 从当前值缓推到目标值 ——
+         火箭会真的"快进"过去，而不是闪现；
+       · 文字快速淡出 → 换图 → 淡入，避免两张图在中间硬切。
+     */
+  var SKIP_MS = 620;
+
+  var clockTween = null;   // { from, to, at }
+  var skipFx = null;       // { at, item, swapped }
+
   function advanceHistory() {
     if (state.arrived) return;
     var next = state.historyIdx + 1;
     if (next >= HISTORY.length) { depart(); return; }
-    // 把动画时钟推到「这一节刚好开始」的位置，
-    // 这样后面的节奏（按钮居中、抵达）也会跟着走，不会只跳一张图。
-    state.clock = historyStartAt() + T.HISTORY_GAP * next + 1;
+
+    var target = historyStartAt() + T.HISTORY_GAP * next + 1;
+
+    clockTween = { from: state.clock, to: target, at: performance.now() };
+    skipFx = { at: performance.now(), item: next, swapped: false };
+
     state.historyIdx = next;
-    state.historyShownAt = state.clock;
-    showHistory(next);
+    state.historyShownAt = target;
     if (els.hint) els.hint.textContent = '已跳到下一节 · 再次轻点可继续';
   }
 
