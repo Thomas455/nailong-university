@@ -243,10 +243,14 @@
         '  vColor = color;',
         '  float w1 = sin(uTime * 1.70 + aPhase) * 0.5 + 0.5;',
         '  float w2 = sin(uTime * 0.63 + aPhase * 2.3) * 0.5 + 0.5;',
-        '  vTwinkle = aBright * (0.72 + 0.28 * mix(w1, w2, 0.45));',
+        '  float tw = mix(w1, w2, 0.45);',
+        '  // 振幅必须够大：星星只有 2~4 像素，28% 的亮度起伏肉眼看不出来。',
+        '  // 0.30~1.00 才有「在闪」的感觉。',
+        '  vTwinkle = aBright * (0.30 + 0.70 * tw);',
         '  vec4 mv = modelViewMatrix * vec4(position, 1.0);',
         '  gl_Position = projectionMatrix * mv;',
-        '  gl_PointSize = uSize * (uScale / -mv.z);',
+        '  // 亮的星顺便大一点点，小尺寸下更容易被眼睛捕捉到',
+        '  gl_PointSize = uSize * (uScale / -mv.z) * (0.80 + 0.45 * tw);',
         '}'
       ].join('\n'),
       fragmentShader: [
