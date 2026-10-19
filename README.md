@@ -1,4 +1,12 @@
-﻿# 宇宙奶龙大学.com
+﻿[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
+
+> **首页 3D 场景由 AI 协作开发。**
+> 发射升空、太空巡航、校史展示、拖动环视 / 轻点跳节 / 暂停这些交互，
+> 由 **DeepSeek Harness** 搭配 `deepseek-flash` 模型完成；
+> 需求、取舍和验收由 [@Thomas455](https://github.com/Thomas455) 把关。
+
+---
+# 宇宙奶龙大学.com
 
 # 这里是"宇宙奶龙大学.com"这个域名的代码仓库
 
