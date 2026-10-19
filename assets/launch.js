@@ -2028,17 +2028,26 @@
     function placeFly(it) {
       var ang = Math.random() * Math.PI * 2;
       // 12 起步：再近就会怼到镜头上挡住火箭
-      // 再近一档：16~56。14 以下会怼到镜头上挡住火箭。
-      var rad = 16 + Math.random() * 40;
+      // 再近一档：11~38。再小就会怼到镜头上挡住火箭。
+      var rad = 11 + Math.random() * 27;
       it.sprite.position.set(
         Math.cos(ang) * rad,
         SPACE_Y + Math.sin(ang) * rad * 0.66,
-        -(55 + Math.random() * 380)
+        // ⚠️ 必须相对火箭当前位置放，不能用绝对坐标。
+        //    火箭一直在往 -Z 飞，用绝对值的话过了几十秒，
+        //    整个航道都会落到它身后 —— 表现就是「飞字全没了」。
+        rocket.position.z - (35 + Math.random() * 155)
       );
       // 距离近 → 尺度要小，否则一条短句能占掉屏幕的 1/3
       // 尺度按距离等比给 —— 近的用小号、远的用大号，
       // 这样任何距离看过去字的大小都差不多，不会有一条突然糊满屏幕。
-      var s = rad * (0.26 + Math.random() * 0.12);
+      // ⚠️ 尺度要按「离相机的距离」算，不能只按横向半径。
+      //    只按 rad 算的话，飞在正前方 200 单位外的那几句会小到看不见 ——
+      //    它的 rad 可能只有 15，但离镜头有 210。
+      var dzFly = it.sprite.position.z - camera.position.z;
+      var distFly = Math.sqrt(rad * rad + dzFly * dzFly);
+      // 取视距的 7.5%：屏幕上大致恒定为画面宽度的 8% 左右
+      var s = distFly * (0.070 + Math.random() * 0.016);
       it.sprite.scale.set(s, s * (CH / CW), 1);
       it.sprite.material.opacity = 0.26 + Math.random() * 0.20;
     }
