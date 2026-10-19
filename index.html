@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
 <meta name="baidu-site-verification" content="codeva-4BVXCTJLWq" />
@@ -324,6 +324,9 @@
   .hist-nav {
     display: flex; gap: 10px; justify-content: center;
     margin-top: 6px;
+    /* ⚠️ 必须显式打开：.hud 整体是 pointer-events:none，不写这行
+       点击会穿透到画布 —— 表现就是「上一节」也会跳到下一节。 */
+    pointer-events: auto;
   }
   .hist-nav[hidden] { display: none; }
   .hist-nav button {
@@ -517,7 +520,7 @@
       <button type="button" id="hist-next" aria-label="下一节校史">下一节 ›</button>
     </div>
     <!-- 进入太空后提示可以拖动环视，几秒后自动淡出 -->
-    <p class="hint hint-orbit" id="hint-orbit" hidden>拖动环视 · 轻点跳一节 · 空格暂停</p>
+    <p class="hint hint-orbit" id="hint-orbit" hidden>拖动环视 · 用下方按钮翻页 · 空格暂停</p>
   </div>
 
   <!-- 没有 WebGL 时的静态兜底 -->

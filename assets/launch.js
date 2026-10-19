@@ -2029,10 +2029,8 @@
     }
 
     function onUp(e) {
-      // 轻点：位移 < 10px 且按住 < 350ms —— 跳下一节校史
-      if (e.target === cv && moved < 10 && performance.now() - downAt < 350) {
-        advanceHistory();
-      }
+      // 画布上不再响应轻点 —— 翻页统一交给下方按钮和方向键。
+      // 原来这里调 advanceHistory()，和按钮功能重叠，还容易误触。
       if (e.pointerId !== pid) return;
       orbit.dragging = false;
       pid = null;
