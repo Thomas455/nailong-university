@@ -2835,6 +2835,46 @@
 
     var CX = W / 2;
 
+    /* ------------------------------------------------------------
+       虚化背景
+
+       文字直接压在星空上时，亮星、碎石、飞字都会从字缝里穿过去，
+       读起来很累。这里在文字后面垫一层柔和的暗底。
+
+       做法是两层：
+         ① 一个大范围的径向渐变 —— 负责「整体压暗」，边缘完全透明；
+         ② 一个椭圆形的模糊块 —— 用 canvas 的 filter: blur() 做真正的
+            高斯模糊，让它看起来像「背景被虚化了」而不是「加了块底色」。
+
+       ⚠️ 必须画在文字之前，而且透明度不能太高 —— 太高会变成一张
+          黑色卡片，那就退回早期被否掉的「卡片式」了。
+       ------------------------------------------------------------ */
+
+    // ① 大范围柔光压暗
+    var vign = g.createRadialGradient(CX, H * 0.48, H * 0.10, CX, H * 0.48, W * 0.52);
+    vign.addColorStop(0, 'rgba(7, 11, 24, .62)');
+    vign.addColorStop(0.45, 'rgba(7, 11, 24, .40)');
+    vign.addColorStop(0.75, 'rgba(7, 11, 24, .14)');
+    vign.addColorStop(1, 'rgba(7, 11, 24, 0)');
+    g.fillStyle = vign;
+    g.fillRect(0, 0, W, H);
+
+    // ② 椭圆模糊块：模拟「背景被虚化」
+    g.save();
+    if (typeof g.filter === 'string') g.filter = 'blur(42px)';
+    var pill = g.createRadialGradient(CX, H * 0.46, H * 0.05, CX, H * 0.46, W * 0.34);
+    pill.addColorStop(0, 'rgba(6, 10, 22, .52)');
+    pill.addColorStop(0.55, 'rgba(6, 10, 22, .34)');
+    pill.addColorStop(1, 'rgba(6, 10, 22, 0)');
+    g.fillStyle = pill;
+    // 画一个比文字范围略大的椭圆
+    var ew = W * 0.42, eh = H * 0.46;
+    g.beginPath();
+    g.ellipse(CX, H * 0.46, ew, eh, 0, 0, Math.PI * 2);
+    g.fill();
+    if (typeof g.filter === 'string') g.filter = 'none';
+    g.restore();
+
     // ---- 顶部：细金线 + 两端小菱形 ----
     function rule(y, halfW, alpha) {
       var lg = g.createLinearGradient(CX - halfW, 0, CX + halfW, 0);
