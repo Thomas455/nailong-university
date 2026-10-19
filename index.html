@@ -762,6 +762,47 @@ body { touch-action: manipulation; }
     e.preventDefault();
   }, { passive: false });
 
+  /* ------------------------------------------------------------
+     iOS Safari 的双击放大
+
+     ⚠️ iOS 从 iOS 10 起**故意忽略** viewport 里的 user-scalable=no
+        和 maximum-scale —— 它为了无障碍强制保留缩放。
+        所以只靠 viewport 那条，在苹果默认浏览器上没有任何效果。
+
+     真正能拦住的是：在 touchend 里对「300ms 内的第二次抬手」
+     调用 preventDefault()。这是 iOS 上唯一稳定的做法。
+
+     两个必须注意的点：
+       ① 必须 passive: false，否则 preventDefault 无效；
+       ② 点在按钮/链接上时不能拦 —— preventDefault 会连带
+          干掉合成 click，按钮就点不动了。
+   ------------------------------------------------------------ */
+  (function blockDoubleTapZoom() {
+    var lastEnd = 0;
+    var INTERACTIVE = "button, a, input, textarea, select, label, [role=button]";
+
+    document.addEventListener('touchend', function (e) {
+      var now = Date.now();
+      var gap = now - lastEnd;
+      lastEnd = now;
+
+      // 不是快速连点第二下，放行
+      if (gap > 320) return;
+
+      // 点在可交互元素上：放行，否则按钮点不动
+      var t = e.target;
+      if (t && t.closest && t.closest(INTERACTIVE)) return;
+
+      // 双指操作（捏合）也一并拦掉
+      e.preventDefault();
+    }, { passive: false });
+
+    // 双指捏合：iOS 上 touchmove 里 preventDefault 才有效
+    document.addEventListener('touchmove', function (e) {
+      if (e.touches.length > 1) e.preventDefault();
+    }, { passive: false });
+  })();
+
   /* ---------- 没有 3D 能力时退回静态页面 ----------
      三种情况都算：three.js 没加载（被拦截）、WebGL 创建失败（老设备）、
      或者用户系统里开了「减少动态效果」。 */

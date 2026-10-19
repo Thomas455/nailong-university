@@ -260,10 +260,14 @@ python -m http.server 8790
 > **移动端缩放**：整页禁用了双击放大 ——
 > `html/body` 用 `touch-action: manipulation`（去掉双击缩放和 300ms 点击延迟，
 > 保留捏合），画布另外是 `touch-action: none`（拖动环视要用）。
-> 部分老 WebView 和 iOS 不认 `touch-action`，所以 viewport 里还有
-> `maximum-scale=1, user-scalable=no` 兜底 —— 代价是双指捏合也一起禁掉了。
-> 这一页是 3D 演示不是长文阅读，权衡后接受；要恢复捏合，删掉那两段即可。
-
+> ⚠️ **iOS 从 iOS 10 起故意忽略 `user-scalable=no` 和 `maximum-scale`** ——
+> 它为了无障碍强制保留缩放，所以 viewport 那条在苹果默认浏览器上**完全无效**。
+> 真正能在 iOS 上拦住双击放大的是：`touchend` 里对 300ms 内的第二次抬手
+> 调 `preventDefault()`（必须 `passive: false`）。
+> 同时要判断 `closest("button, a, ...")` 放行 —— 否则会连带干掉合成 click，
+> 按钮就点不动了。
+>
+> viewport 那条留着，作为老安卓 WebView 的兜底。
 | `.sr-only` 正文 | 首页内容全在 canvas 里，搜索引擎和读屏都抓不到；用 clip 方式视觉隐藏一份真文本 |
 
 > ⚠️ 已知遗留：`index.html` 里有一个 `var reduce`（检测 `prefers-reduced-motion`）
