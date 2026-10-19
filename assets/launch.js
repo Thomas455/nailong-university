@@ -270,26 +270,62 @@
   scene.add(padGroup);
 
   (function buildPad() {
+    // 发射场地面：绿色陆地。
+    // 不是纯绿平涂 —— 加了斑块、暗斑和细噪点，远看是草地、
+    // 近看有起伏，否则一大片纯绿在 3D 里会像一块塑料板。
     var groundTex = makeTexture(1024, 1024, function (g, w, h) {
+      // 底色：中心稍亮（被发射台照到），边缘暗下去
       var grd = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
-      grd.addColorStop(0, '#141b30');
-      grd.addColorStop(0.42, '#0b1020');
-      grd.addColorStop(1, '#05070f');
+      grd.addColorStop(0, '#39733f');
+      grd.addColorStop(0.34, '#2c5c33');
+      grd.addColorStop(0.66, '#1d4025');
+      grd.addColorStop(1, '#0e2115');
       g.fillStyle = grd; g.fillRect(0, 0, w, h);
-      // 同心圆刻度，给个「发射场」的暗示
-      g.strokeStyle = 'rgba(254,206,14,.07)';
-      g.lineWidth = 3;
-      for (var r = 70; r < w / 2; r += 78) {
-        g.beginPath(); g.arc(w / 2, h / 2, r, 0, Math.PI * 2); g.stroke();
+
+      var rnd = 4711;
+      function rand() { rnd = (rnd * 1103515245 + 12345) & 0x7fffffff; return rnd / 0x7fffffff; }
+
+      // 深浅斑块，模拟草地/林地的不均匀
+      for (var i = 0; i < 260; i++) {
+        var cx = rand() * w, cy = rand() * h;
+        var r = 24 + rand() * 120;
+        var dark = rand() > 0.5;
+        var gg = g.createRadialGradient(cx, cy, 0, cx, cy, r);
+        if (dark) {
+          gg.addColorStop(0, 'rgba(12,34,18,.35)');
+          gg.addColorStop(1, 'rgba(12,34,18,0)');
+        } else {
+          gg.addColorStop(0, 'rgba(104,168,96,.26)');
+          gg.addColorStop(1, 'rgba(104,168,96,0)');
+        }
+        g.fillStyle = gg;
+        g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
       }
-      // 放射状刻度
-      g.strokeStyle = 'rgba(120,160,255,.05)';
+
+      // 细噪点：近看时的草皮颗粒感
+      var img = g.getImageData(0, 0, w, h);
+      var d = img.data;
+      for (var k = 0; k < d.length; k += 4) {
+        var n = (rand() - 0.5) * 26;
+        d[k]     = Math.max(0, Math.min(255, d[k] + n));
+        d[k + 1] = Math.max(0, Math.min(255, d[k + 1] + n * 1.15));
+        d[k + 2] = Math.max(0, Math.min(255, d[k + 2] + n * 0.7));
+      }
+      g.putImageData(img, 0, 0);
+
+      // 发射场感：几道很淡的同心圆 + 放射线（压在白线以下）
+      g.strokeStyle = 'rgba(226,240,200,.10)';
+      g.lineWidth = 3;
+      for (var r2 = 96; r2 < w / 2; r2 += 92) {
+        g.beginPath(); g.arc(w / 2, h / 2, r2, 0, Math.PI * 2); g.stroke();
+      }
+      g.strokeStyle = 'rgba(226,240,200,.055)';
       g.lineWidth = 2;
-      for (var a = 0; a < 36; a++) {
-        var ang = (a / 36) * Math.PI * 2;
+      for (var a = 0; a < 24; a++) {
+        var ang = (a / 24) * Math.PI * 2;
         g.beginPath();
-        g.moveTo(w / 2 + Math.cos(ang) * 120, h / 2 + Math.sin(ang) * 120);
-        g.lineTo(w / 2 + Math.cos(ang) * (w / 2 - 10), h / 2 + Math.sin(ang) * (w / 2 - 10));
+        g.moveTo(w / 2 + Math.cos(ang) * 150, h / 2 + Math.sin(ang) * 150);
+        g.lineTo(w / 2 + Math.cos(ang) * (w / 2 - 12), h / 2 + Math.sin(ang) * (w / 2 - 12));
         g.stroke();
       }
     });
@@ -311,7 +347,7 @@
       new THREE.CircleGeometry(520, 96),
       new THREE.MeshStandardMaterial({
         map: groundTex, roughness: 0.94, metalness: 0.05,
-        color: 0x4a5270,
+        color: 0x9fbf98,
         alphaMap: fadeTex, transparent: true, depthWrite: false
       })
     );
@@ -384,8 +420,53 @@
       color: 0x1c2236, roughness: 0.42, metalness: 0.85
     });
 
-    // ---- 箭体：上细下粗，一点点锥度更像真火箭 ----
-    var body = new THREE.Mesh(new THREE.CylinderGeometry(1.46, 1.74, 5.6, 48), white);
+    // ---- 箭体 ----
+    // 不再是纯色圆柱：画一张蒙皮纹理，带上横竖板缝、铆钉和轻微脏污。
+    // 纯白柱在深色太空里像塑料玩具，有了板缝才有「金属壳体」的质感。
+    var bodyTex = makeTexture(1024, 1024, function (g, w, h) {
+      var grd = g.createLinearGradient(0, 0, 0, h);
+      grd.addColorStop(0, '#f2f5fc');
+      grd.addColorStop(0.55, '#e6ebf6');
+      grd.addColorStop(1, '#d6dcec');
+      g.fillStyle = grd; g.fillRect(0, 0, w, h);
+
+      // 横向板缝（箭体的环向分段）
+      for (var y = 96; y < h; y += 126) {
+        g.strokeStyle = 'rgba(132,146,176,.17)';
+        g.lineWidth = 2;
+        g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke();
+        // 缝下面一条很淡的高光，做出「有厚度」的错觉
+        g.strokeStyle = 'rgba(255,255,255,.55)';
+        g.lineWidth = 1.5;
+        g.beginPath(); g.moveTo(0, y + 2.5); g.lineTo(w, y + 2.5); g.stroke();
+      }
+
+      // 纵向板缝（8 条均匀分布）
+      g.strokeStyle = 'rgba(136,150,180,.11)';
+      g.lineWidth = 1.5;
+      for (var x = 0; x < w; x += w / 8) {
+        g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke();
+      }
+
+      // 铆钉：沿每条横向板缝点一圈
+      g.fillStyle = 'rgba(150,162,190,.20)';
+      for (var yy = 96; yy < h; yy += 126) {
+        for (var xx = 14; xx < w; xx += 34) {
+          g.beginPath(); g.arc(xx, yy, 2, 0, Math.PI * 2); g.fill();
+        }
+      }
+
+      // 极淡的竖向脏污条纹，避免过于干净
+      for (var i2 = 0; i2 < 26; i2++) {
+        g.fillStyle = 'rgba(108,120,150,' + (0.010 + Math.random() * 0.018).toFixed(3) + ')';
+        g.fillRect(Math.random() * w, 0, 4 + Math.random() * 18, h);
+      }
+    });
+
+    var bodyMat = new THREE.MeshStandardMaterial({
+      map: bodyTex, color: 0xffffff, roughness: 0.38, metalness: 0.30
+    });
+    var body = new THREE.Mesh(new THREE.CylinderGeometry(1.46, 1.74, 5.6, 64), bodyMat);
     body.position.y = 3.5;
     rocket.add(body);
 
@@ -394,7 +475,7 @@
       var band = new THREE.Mesh(
         new THREE.CylinderGeometry(1.62 - b * 0.05, 1.66 - b * 0.05, 0.1, 48), gold
       );
-      band.position.y = 1.35 + b * 3.4;
+      band.position.y = 1.02 + b * 3.73;
       rocket.add(band);
     }
 
@@ -499,28 +580,144 @@
     winGroup.add(winGlow);
     rocket.add(winGroup);
 
-    // ---- 箭体侧面「奶龙号」 ----
-    var nameTex = makeTexture(256, 1024, function (g, w, h) {
+    /* ---------------- 细节零件 ---------------- */
+
+    // 级间段（二级火箭的分段位置）：比普通金环更粗，带一点凸起
+    var interstage = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.60, 1.66, 0.34, 64), dark
+    );
+    interstage.position.y = 5.62;
+    rocket.add(interstage);
+
+    var interstageRing = new THREE.Mesh(
+      new THREE.TorusGeometry(1.62, 0.055, 8, 64), gold
+    );
+    interstageRing.rotation.x = Math.PI / 2;
+    interstageRing.position.y = 5.79;
+    rocket.add(interstageRing);
+
+    // 顶端 4 个小姿态控制喷口（RCS）
+    var rcsMat = new THREE.MeshStandardMaterial({
+      color: 0x39405c, roughness: 0.45, metalness: 0.8
+    });
+    for (var r = 0; r < 4; r++) {
+      var ra = (r / 4) * Math.PI * 2 + Math.PI / 4;
+      var rcs = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.34, 8), rcsMat);
+      rcs.position.set(Math.cos(ra) * 1.50, 6.06, Math.sin(ra) * 1.50);
+      rcs.rotation.z = Math.cos(ra) * 0.5;
+      rcs.rotation.x = -Math.sin(ra) * 0.5;
+      rocket.add(rcs);
+    }
+
+    // 沿箭体的一条外置导管（从尾段穿到级间段）
+    var pipeCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0.62, 1.10, 1.42),
+      new THREE.Vector3(0.66, 2.40, 1.40),
+      new THREE.Vector3(0.70, 3.90, 1.36),
+      new THREE.Vector3(0.72, 5.20, 1.32)
+    ]);
+    var pipe = new THREE.Mesh(
+      new THREE.TubeGeometry(pipeCurve, 32, 0.045, 8, false),
+      new THREE.MeshStandardMaterial({ color: 0xb9c2d8, roughness: 0.35, metalness: 0.85 })
+    );
+    rocket.add(pipe);
+
+    // 尾段 4 根支撑斜撑（喷管和箭体之间）
+    var strutMat = new THREE.MeshStandardMaterial({
+      color: 0x2b3350, roughness: 0.55, metalness: 0.7
+    });
+    for (var s2 = 0; s2 < 4; s2++) {
+      var sa = (s2 / 4) * Math.PI * 2 + Math.PI / 4;
+      var strut = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.9, 0.075), strutMat);
+      strut.position.set(Math.cos(sa) * 1.16, 0.62, Math.sin(sa) * 1.16);
+      strut.rotation.z = Math.cos(sa) * 0.22;
+      strut.rotation.x = -Math.sin(sa) * 0.22;
+      rocket.add(strut);
+    }
+
+    // ---- 贴花：用圆柱的一段弧，紧贴箭体曲面 ----
+    // ⚠️ 不用平面片：平面贴在圆柱上会一半陷进壳体、边缘还会穿出来。
+    function arcDecal(radius, height, arcDeg, tex, offsetY) {
+      var theta = arcDeg * Math.PI / 180;
+      var geo = new THREE.CylinderGeometry(
+        radius, radius, height, 40, 1, true, -theta / 2, theta
+      );
+      var mat = new THREE.MeshBasicMaterial({
+        map: tex, transparent: true, depthWrite: false,
+        side: THREE.FrontSide, fog: false
+      });
+      var m = new THREE.Mesh(geo, mat);
+      m.position.y = offsetY;
+      return m;
+    }
+
+    // --- 「奶龙号」：贴在 +X 面、尾翼上方，横排 ---
+    //
+    // 位置是算过的：
+    //  · 三片尾翼在 0°/120°/240°（0° 正好是 +X），但它们最高只到 y≈3.0，
+    //    所以 y=4.15 处整个圆周都是空的；
+    //  · 贴在 +X 而不是 +Z：火箭进入太空后侧倾 -90°，±Z 面会变成朝上/朝下，
+    //    只有 ±X 面始终是「侧面」，追尾镜头才看得见。
+    var nameTex2 = makeTexture(1024, 256, function (g, w, h) {
       g.clearRect(0, 0, w, h);
-      g.fillStyle = '#2a2000';
-      g.font = 'bold 140px "PingFang SC","Microsoft YaHei",sans-serif';
       g.textAlign = 'center';
       g.textBaseline = 'middle';
-      var chars = ['奶', '龙', '号'];
-      for (var k = 0; k < chars.length; k++) {
-        g.fillText(chars[k], w / 2, 240 + k * 205);
-      }
+      g.font = '900 172px "PingFang SC","Microsoft YaHei",sans-serif';
+      // 深金字 + 浅色外发光：白箭体上能压得住
+      g.shadowColor = 'rgba(255,255,255,.95)';
+      g.shadowBlur = 26;
+      g.fillStyle = '#8a6a00';
+      g.fillText('奶龙号', w / 2, h / 2 + 6);
+      // 再浅浅描一层，增强立体感
+      g.shadowBlur = 0;
+      g.strokeStyle = 'rgba(255,255,255,.55)';
+      g.lineWidth = 3;
+      g.strokeText('奶龙号', w / 2, h / 2 + 6);
     });
-    var nameDecal = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.95, 3.8),
-      new THREE.MeshBasicMaterial({
-        map: nameTex, transparent: true, depthWrite: false, fog: false
-      })
-    );
-    // 贴在 -Z 面（舷窗背面），从后面也看得到字
-    nameDecal.position.set(0, 3.9, -1.72);
-    nameDecal.rotation.y = Math.PI;
-    rocket.add(nameDecal);
+    var nameDecal2 = arcDecal(1.63, 0.98, 70, nameTex2, 3.15);
+    nameDecal2.rotation.y = Math.PI * 0.194;   // 约 35°，正对发射台镜头
+    rocket.add(nameDecal2);
+
+    // --- 广州大学校徽：贴在 +Z 面（舷窗下方）---
+    // ⚠️ 不放 +X：三片尾翼正好指向 +X、-X-Z、-X+Z，
+    //    徽章放 +X 会被尾翼完全挡住。+Z / -Z 是空的。
+
+    // ⚠️ 半径必须大于该高度处的箭体半径，否则整块贴花会陷进壳体里看不见。
+    //    箭体是上细下粗的锥（底部 1.74、顶部 1.46），y≈2.25 处约 1.66，所以取 1.72。
+    var logoDecal = arcDecal(1.70, 1.38, 58, null, 2.02);
+    logoDecal.rotation.y = 0;            // 朝向 +Z
+    rocket.add(logoDecal);
+    // ⚠️ 用原生 Image 而不用 THREE.TextureLoader：
+    //    TextureLoader 的回调给的是 Texture 对象，不是 Image，
+    //    直接 drawImage 会抛「provided value is not of type HTMLImageElement」。
+    var logoImg = new Image();
+    logoImg.onload = function () {
+      var c = document.createElement('canvas');
+      c.width = c.height = 512;
+      var g = c.getContext('2d');
+      g.clearRect(0, 0, 512, 512);
+
+      // 外圈金边
+      g.strokeStyle = '#fece0e';
+      g.lineWidth = 20;
+      g.beginPath(); g.arc(256, 256, 232, 0, Math.PI * 2); g.stroke();
+      // 内侧一圈暗金，做出金属厚度
+      g.strokeStyle = 'rgba(140,106,0,.75)';
+      g.lineWidth = 6;
+      g.beginPath(); g.arc(256, 256, 243, 0, Math.PI * 2); g.stroke();
+
+      g.drawImage(logoImg, 46, 46, 420, 420);
+
+      var lt = new THREE.CanvasTexture(c);
+      lt.encoding = THREE.sRGBEncoding;
+      lt.anisotropy = 4;
+      logoDecal.material.map = lt;
+      logoDecal.material.needsUpdate = true;
+    };
+    logoImg.onerror = function () {
+      console.error('[logo] 校徽加载失败，检查 assets/gzhu-logo.png 是否存在');
+    };
+    logoImg.src = 'assets/gzhu-logo.png';
   })();
 
   /* ============================================================
@@ -622,6 +819,209 @@
     flameGroup.add(pts);
     return { points: pts, pos: pos, vel: vel, life: life, n: N, geo: geo };
   })();
+
+  /* ============================================================
+     尾迹
+     上面那套 embers 是挂在 flameGroup 上的「火星」，跟着火箭走，
+     只在喷口附近扑腾 —— 它形不成尾迹。
+
+     真正的尾迹必须**留在世界坐标系里**：火箭飞走后，喷出来的东西
+     原地留在后面，才看得出走过一条路。所以这套粒子直接挂在 scene 上。
+
+     每个粒子有独立的大小 / 透明度 / 颜色：
+       刚喷出 —— 小、亮白偏黄；
+       0.6 秒  —— 变大、转橙；
+       越往后  —— 继续膨胀、转暗红发灰、淡出。
+     用自定义 ShaderMaterial 而不是 PointsMaterial：
+     PointsMaterial 的 size 和 opacity 对所有点是一个值，
+     做不出「一边膨胀一边淡出」的烟。
+
+     ⚠️ 用环形缓冲，不新建对象 —— 每帧都要生成几十个粒子，
+        频繁 new/GC 在手机上会掉帧。
+     ============================================================ */
+  var trail = (function () {
+    var MAX = 1100;
+    var pos = new Float32Array(MAX * 3);
+    var col = new Float32Array(MAX * 3);
+    var siz = new Float32Array(MAX);
+    var alp = new Float32Array(MAX);
+
+    // 每个粒子的内部状态
+    var vel = new Float32Array(MAX * 3);
+    var age = new Float32Array(MAX);
+    var life = new Float32Array(MAX);
+    var grow = new Float32Array(MAX);
+    var seed = new Float32Array(MAX);
+
+    for (var i = 0; i < MAX; i++) { age[i] = -1; life[i] = 1; }
+
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('aColor', new THREE.BufferAttribute(col, 3));
+    geo.setAttribute('aSize', new THREE.BufferAttribute(siz, 1));
+    geo.setAttribute('aAlpha', new THREE.BufferAttribute(alp, 1));
+    geo.setDrawRange(0, MAX);
+
+    var tex = makeTexture(128, 128, function (g) {
+      var grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+      grd.addColorStop(0, 'rgba(255,255,255,1)');
+      grd.addColorStop(0.30, 'rgba(255,255,255,.62)');
+      grd.addColorStop(0.62, 'rgba(255,255,255,.18)');
+      grd.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+    });
+
+    var mat = new THREE.ShaderMaterial({
+      uniforms: {
+        uMap: { value: tex },
+        // 由 resize() 更新：把世界单位换算成屏幕像素
+        uProj: { value: 600 }
+      },
+      vertexShader: [
+        'attribute float aSize;',
+        'attribute float aAlpha;',
+        'attribute vec3 aColor;',
+        'uniform float uProj;',
+        'varying float vA;',
+        'varying vec3 vC;',
+        'void main() {',
+        '  vA = aAlpha;',
+        '  vC = aColor;',
+        '  vec4 mv = modelViewMatrix * vec4(position, 1.0);',
+        '  gl_PointSize = aSize * uProj / max(0.001, -mv.z);',
+        '  gl_Position = projectionMatrix * mv;',
+        '}'
+      ].join('\n'),
+      fragmentShader: [
+        'uniform sampler2D uMap;',
+        'varying float vA;',
+        'varying vec3 vC;',
+        'void main() {',
+        '  vec4 t = texture2D(uMap, gl_PointCoord);',
+        '  gl_FragColor = vec4(vC * t.rgb * vA, t.a * vA);',
+        '}'
+      ].join('\n'),
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: true,
+      fog: false
+    });
+
+    var points = new THREE.Points(geo, mat);
+    points.frustumCulled = false;
+    points.renderOrder = 15;
+    scene.add(points);
+
+    return {
+      points: points, mat: mat, n: MAX,
+      pos: pos, col: col, siz: siz, alp: alp,
+      vel: vel, age: age, life: life, grow: grow, seed: seed,
+      cursor: 0, geo: geo
+    };
+  })();
+
+  // 喷出 n 个粒子（从喷口的当前位置）
+  function emitTrail(n, now) {
+    var t = trail;
+    var q = new THREE.Vector3();
+    flameGroup.getWorldPosition(q);
+    // 喷射方向 = 箭体局部 -Y 在世界里的方向
+    var dir = new THREE.Vector3(0, -1, 0).applyQuaternion(rocket.quaternion);
+
+    for (var k = 0; k < n; k++) {
+      var i = t.cursor;
+      t.cursor = (t.cursor + 1) % t.n;
+
+      // 喷口附近做一个小圆盘抖动，避免所有粒子从同一个点出生
+      var rr = Math.sqrt(Math.random()) * 0.7;
+      var th = Math.random() * Math.PI * 2;
+      var ox = Math.cos(th) * rr, oz = Math.sin(th) * rr;
+
+      t.pos[i * 3] = q.x + ox;
+      t.pos[i * 3 + 1] = q.y + (Math.random() - 0.5) * 0.5;
+      t.pos[i * 3 + 2] = q.z + oz;
+
+      // 初速：主方向顺着喷流，加一点横向散开
+      var sp = 6 + Math.random() * 13;
+      t.vel[i * 3] = dir.x * sp + (Math.random() - 0.5) * 3.2;
+      t.vel[i * 3 + 1] = dir.y * sp + (Math.random() - 0.5) * 3.2;
+      t.vel[i * 3 + 2] = dir.z * sp + (Math.random() - 0.5) * 3.2;
+
+      t.age[i] = 0;
+      t.life[i] = 1.6 + Math.random() * 1.9;          // 1.6~3.5 秒
+      t.grow[i] = 3.6 + Math.random() * 4.6;          // 一生膨胀到多少倍
+      t.seed[i] = Math.random();
+    }
+  }
+
+  // 每帧推进
+  function updateTrail(dt) {
+    var t = trail;
+    var alive = 0;
+
+    for (var i = 0; i < t.n; i++) {
+      if (t.age[i] < 0) { t.alp[i] = 0; t.siz[i] = 0; continue; }
+
+      t.age[i] += dt;
+      var u = t.age[i] / t.life[i];
+      if (u >= 1) { t.age[i] = -1; t.alp[i] = 0; t.siz[i] = 0; continue; }
+
+      // 位移 + 阻力（喷出后很快减速，像真的烟）
+      var drag = Math.pow(0.055, dt);
+      t.vel[i * 3] *= drag;
+      t.vel[i * 3 + 1] *= drag;
+      t.vel[i * 3 + 2] *= drag;
+
+      t.pos[i * 3] += t.vel[i * 3] * dt;
+      t.pos[i * 3 + 1] += t.vel[i * 3 + 1] * dt;
+      t.pos[i * 3 + 2] += t.vel[i * 3 + 2] * dt;
+
+      // 稍微向上飘（真空里其实不该有，但看起来更像烟，观感优先）
+      t.pos[i * 3 + 1] += dt * 0.35;
+
+      // 大小：随时间膨胀
+      var base = 0.85 + t.seed[i] * 0.7;
+      t.siz[i] = base * (1 + t.grow[i] * u * u);
+
+      // 颜色：白热 → 橙 → 暗红
+      var r, g, b;
+      if (u < 0.18) {
+        var k = u / 0.18;
+        r = 1.0;
+        g = 0.96 - 0.26 * k;
+        b = 0.82 - 0.62 * k;
+      } else if (u < 0.55) {
+        var k2 = (u - 0.18) / 0.37;
+        r = 1.0 - 0.28 * k2;
+        g = 0.70 - 0.36 * k2;
+        b = 0.20 - 0.14 * k2;
+      } else {
+        var k3 = (u - 0.55) / 0.45;
+        r = 0.72 - 0.60 * k3;
+        g = 0.34 - 0.28 * k3;
+        b = 0.06 - 0.05 * k3;
+      }
+      t.col[i * 3] = Math.max(0, r);
+      t.col[i * 3 + 1] = Math.max(0, g);
+      t.col[i * 3 + 2] = Math.max(0, b);
+
+      // 透明度：出生时快速淡入，中段保持，末段淡出
+      var a;
+      if (u < 0.06) a = u / 0.06;
+      else if (u < 0.45) a = 1;
+      else a = 1 - (u - 0.45) / 0.55;
+      t.alp[i] = Math.max(0, a) * 0.46;
+
+      alive++;
+    }
+
+    t.geo.attributes.position.needsUpdate = true;
+    t.geo.attributes.aColor.needsUpdate = true;
+    t.geo.attributes.aSize.needsUpdate = true;
+    t.geo.attributes.aAlpha.needsUpdate = true;
+    return alive;
+  }
 
   /* ============================================================
      地球（升空后从下方看到）
@@ -909,7 +1309,7 @@
     // 引擎点光源跟着喷口走
     var wp = flameGroup.getWorldPosition(new THREE.Vector3());
     engineLight.position.copy(wp);
-    engineLight.intensity = ign * 4.2 * flick;
+    engineLight.intensity = ign * 2.6 * flick;
 
     // 顶尖红灯闪
     if (rocket.userData.tip) {
@@ -919,6 +1319,21 @@
     }
 
     updateEmbers(now, ign);
+
+    // ---- 尾迹 ----
+    // 用真实帧间隔（封顶 1/30 秒，避免切后台回来时一帧跳太远）
+    var nowS = now / 1000;
+    var tdt = trail._last ? Math.min(0.05, nowS - trail._last) : 0.016;
+    trail._last = nowS;
+
+    // 每秒喷多少：升空时最猛，太空里少一些（真空里本来就没烟，
+    // 但完全没有又看不出「刚飞过」，所以留一点点）
+    var rate = 0;
+    if (ign > 0.15) rate = (st.asc < 1) ? 260 : 95;
+    var emitN = Math.min(24, Math.round(rate * tdt));
+    if (emitN > 0) emitTrail(emitN, nowS);
+
+    updateTrail(tdt);
     return st;
   }
 
@@ -964,11 +1379,11 @@
       // 相机在箭体侧前方一点点，高度约在箭体底部上方 1.5，
       // 视线略微上抬看向箭体中段。
       py = st.y - 1.6 + (1 - k) * 1.2;
-      px = lerp(14, 11.5, k);
-      pz = lerp(19, 15, k);
+      px = lerp(12, 10, k);
+      pz = lerp(19, 16, k);
 
       lx = 0;
-      ly = st.y + 5.0;
+      ly = st.y + 4.2;
       lz = 0;
     } else {
       // --- C：太空追尾 ---
@@ -995,14 +1410,20 @@
     }
 
     // 平滑跟随（snap = true 时直接落位，用于首帧和还原）
-    var f = snap ? 1 : (state.arrived ? 0.18 : 0.1);
+    // 升空时火箭在加速，跟随系数给大一点，否则相机会被甩在后面，
+    // 火箭一路顶到画面上沿
+    var f = snap ? 1 : (state.arrived ? 0.18 : (st.asc > 0 && st.asc < 1 ? 0.2 : 0.1));
     camera.position.x = lerp(camera.position.x, px, f);
     camera.position.y = lerp(camera.position.y, py, f);
     camera.position.z = lerp(camera.position.z, pz, f);
 
-    camLook.x = lerp(camLook.x, lx, snap ? 1 : 0.12);
-    camLook.y = lerp(camLook.y, ly, snap ? 1 : 0.12);
-    camLook.z = lerp(camLook.z, lz, snap ? 1 : 0.12);
+    // ⚠️ 注视点的插值速率分阶段：
+    //    升空时火箭在加速（约 30 单位/秒），用 0.12 会让注视点落后好几个单位，
+    //    结果火箭被顶到画面外。太空段速度稳定，慢一点反而更稳。
+    var lookF = snap ? 1 : ((st.asc > 0 && st.asc < 1) ? 0.36 : 0.12);
+    camLook.x = lerp(camLook.x, lx, lookF);
+    camLook.y = lerp(camLook.y, ly, lookF);
+    camLook.z = lerp(camLook.z, lz, lookF);
     camera.lookAt(camLook);
   }
 
@@ -1260,9 +1681,11 @@
     histSprite.position.copy(p);
   }
 
-  // 校史从升空进行到一半时开始放，让起飞那几秒画面干净
+  // 校史等火箭进入太空、姿态转换完成后再开始放。
+  // 升空阶段（0~9 秒）画面只有火箭和尾迹，干净利落；
+  // 提前放的话文字会和箭体、尾迹撞在一起。
   function historyStartAt() {
-    return T.PRE + T.ASCEND * 0.45;
+    return T.PRE + T.ASCEND + 600;
   }
 
   // 最后一页校史放完的时刻 —— 到了就亮出「出发」按钮
@@ -1403,6 +1826,14 @@
     // 竖屏手机上把 FOV 拉大，否则箭体两侧会被切掉
     camera.fov = (w / h) < 0.85 ? 64 : 50;
     camera.updateProjectionMatrix();
+
+    // 尾迹粒子的点尺寸换算：把世界单位换算成屏幕像素。
+    // gl_PointSize 是像素单位，所以要用视口高度和 FOV 反推。
+    if (trail && trail.mat) {
+      var fovRad = camera.fov * Math.PI / 180;
+      trail.mat.uniforms.uProj.value =
+        (h * 0.5) / Math.tan(fovRad / 2) * renderer.getPixelRatio();
+    }
   }
   window.addEventListener('resize', resize);
 
@@ -1437,7 +1868,13 @@
   // 调试用：把内部对象暴露出来，方便在浏览器里逐个隐藏定位问题
   window.__dbg = {
     scene: scene, camera: camera, rocket: rocket, flameGroup: flameGroup,
-    embers: embers, planetGroup: planetGroup, earth: earth, padGroup: padGroup
+    embers: embers, planetGroup: planetGroup, earth: earth, padGroup: padGroup,
+    trail: trail,
+    trailAlive: function () {
+      var n = 0;
+      for (var i = 0; i < trail.n; i++) if (trail.age[i] >= 0) n++;
+      return n;
+    }
   };
 
   // 调试用：把动画时间跳到指定毫秒（截图验收时精确抓某一帧）。
