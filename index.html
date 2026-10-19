@@ -349,6 +349,42 @@
   }
   .hist-nav button:disabled { opacity: .32; cursor: default; }
 
+  /* ---------- 窄屏（竖屏手机）布局 ----------
+     390px 宽时，「出发」胶囊、翻页按钮、底部三个导航按钮会挤在一起：
+     出发按钮是 fixed 在右下角、文本又长，横向铺开正好压住翻页行。
+     窄屏下改成：出发按钮变成通栏胶囊、翻页行抬到它上面。 */
+  @media (max-width: 520px) {
+    /* 给底部留出「出发按钮 + 导航按钮」两层的高度 */
+    .hud {
+      padding-bottom: max(138px, calc(env(safe-area-inset-bottom) + 126px));
+    }
+
+    .go-btn.corner {
+      left: 50%; right: auto;
+      bottom: calc(max(10px, env(safe-area-inset-bottom)) + 50px);
+      transform: translateX(-50%);
+      width: min(90vw, 340px);
+      justify-content: center;
+      padding: 11px 16px;
+      font-size: 13.5px;
+    }
+    .go-btn.corner.show {
+      transform: translateX(-50%);
+      animation: goBreatheFlat 2.8s ease-in-out infinite;
+    }
+
+    /* 触控目标别太小 */
+    .hist-nav button { padding: 9px 20px; }
+    .hist-nav { gap: 12px; }
+  }
+
+  /* 通栏按钮的呼吸动画：不能动 transform（否则会盖掉 translateX），
+     所以只闪 box-shadow。 */
+  @keyframes goBreatheFlat {
+    0%, 100% { box-shadow: 0 0 0 1px rgba(255,255,255,.3) inset, 0 6px 22px rgba(254,206,14,.32); }
+    50%      { box-shadow: 0 0 0 1px rgba(255,255,255,.3) inset, 0 8px 30px rgba(254,206,14,.60); }
+  }
+
   .hint-orbit {
     font-size: clamp(11px, 3.1vw, 12.5px);
     color: rgba(238, 241, 255, .42);
