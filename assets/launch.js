@@ -409,6 +409,23 @@
   scene.add(rocket);
 
   (function buildRocket() {
+    /* ============================================================
+       奶龙号的尺寸全部由下面这几个常量推出来。
+       想整体拉长/变胖只改这里，各部分位置会自动跟着走 ——
+       之前是满篇硬编码数字，改一个高度要连带改十几处，很容易漏。
+       ============================================================ */
+    var Y0 = 0.75;        // 箭体底面高度（下面接喷管）
+    var BH = 7.2;         // 箭体高度（原 5.6，拉长 29%）
+    var RT = 1.38;        // 箭体顶部半径
+    var RB = 1.74;        // 箭体底部半径
+    var NOSE_H = 3.0;     // 头锥高度
+    var YTOP = Y0 + BH;   // 箭体顶面
+
+    // 任意高度处的箭体半径（圆柱是锥形的，贴花半径得按这个算）
+    function radiusAt(y) {
+      return RB + (RT - RB) * (y - Y0) / BH;
+    }
+
     var white = new THREE.MeshStandardMaterial({
       color: 0xdfe4f2, roughness: 0.34, metalness: 0.28
     });
@@ -421,8 +438,8 @@
     });
 
     // ---- 箭体 ----
-    // 不再是纯色圆柱：画一张蒙皮纹理，带上横竖板缝、铆钉和轻微脏污。
-    // 纯白柱在深色太空里像塑料玩具，有了板缝才有「金属壳体」的质感。
+    // 不是纯色圆柱：蒙皮纹理上有横向板缝、纵向缝、铆钉和很淡的竖向脏污。
+    // 纯白柱在深色太空里像塑料玩具，有板缝才有金属壳体的质感。
     var bodyTex = makeTexture(1024, 1024, function (g, w, h) {
       var grd = g.createLinearGradient(0, 0, 0, h);
       grd.addColorStop(0, '#f2f5fc');
@@ -430,33 +447,28 @@
       grd.addColorStop(1, '#d6dcec');
       g.fillStyle = grd; g.fillRect(0, 0, w, h);
 
-      // 横向板缝（箭体的环向分段）
-      for (var y = 96; y < h; y += 126) {
+      for (var y = 88; y < h; y += 112) {
         g.strokeStyle = 'rgba(132,146,176,.17)';
         g.lineWidth = 2;
         g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke();
-        // 缝下面一条很淡的高光，做出「有厚度」的错觉
         g.strokeStyle = 'rgba(255,255,255,.55)';
         g.lineWidth = 1.5;
         g.beginPath(); g.moveTo(0, y + 2.5); g.lineTo(w, y + 2.5); g.stroke();
       }
 
-      // 纵向板缝（8 条均匀分布）
       g.strokeStyle = 'rgba(136,150,180,.11)';
       g.lineWidth = 1.5;
       for (var x = 0; x < w; x += w / 8) {
         g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke();
       }
 
-      // 铆钉：沿每条横向板缝点一圈
       g.fillStyle = 'rgba(150,162,190,.20)';
-      for (var yy = 96; yy < h; yy += 126) {
+      for (var yy = 88; yy < h; yy += 112) {
         for (var xx = 14; xx < w; xx += 34) {
           g.beginPath(); g.arc(xx, yy, 2, 0, Math.PI * 2); g.fill();
         }
       }
 
-      // 极淡的竖向脏污条纹，避免过于干净
       for (var i2 = 0; i2 < 26; i2++) {
         g.fillStyle = 'rgba(108,120,150,' + (0.010 + Math.random() * 0.018).toFixed(3) + ')';
         g.fillRect(Math.random() * w, 0, 4 + Math.random() * 18, h);
@@ -466,52 +478,101 @@
     var bodyMat = new THREE.MeshStandardMaterial({
       map: bodyTex, color: 0xffffff, roughness: 0.38, metalness: 0.30
     });
-    var body = new THREE.Mesh(new THREE.CylinderGeometry(1.46, 1.74, 5.6, 64), bodyMat);
-    body.position.y = 3.5;
+    var body = new THREE.Mesh(new THREE.CylinderGeometry(RT, RB, BH, 72), bodyMat);
+    body.position.y = Y0 + BH / 2;
     rocket.add(body);
 
-    // 箭体上两道细金环（视觉分段，避免一大片白）
-    for (var b = 0; b < 2; b++) {
-      var band = new THREE.Mesh(
-        new THREE.CylinderGeometry(1.62 - b * 0.05, 1.66 - b * 0.05, 0.1, 48), gold
+    // ---- 头锥 ----
+    var nose = new THREE.Mesh(new THREE.ConeGeometry(RT, NOSE_H, 72), gold);
+    nose.position.y = YTOP + NOSE_H / 2;
+    rocket.add(nose);
+
+    // 头锥根的过渡环（收口，不然圆锥和圆柱直接撞在一起很生硬）
+    var collar = new THREE.Mesh(
+      new THREE.CylinderGeometry(RT + 0.05, RT + 0.05, 0.24, 72), gold
+    );
+    collar.position.y = YTOP;
+    rocket.add(collar);
+
+    // 头锥底部的四片小导流片（细节，让头锥不那么单调）
+    var vaneMat = new THREE.MeshStandardMaterial({
+      color: 0xe8b400, roughness: 0.35, metalness: 0.55
+    });
+    for (var v = 0; v < 4; v++) {
+      var va = (v / 4) * Math.PI * 2;
+      var vane = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.55, 0.42), vaneMat);
+      vane.position.set(
+        Math.cos(va) * (RT - 0.12), YTOP - 0.62, Math.sin(va) * (RT - 0.12)
       );
-      band.position.y = 1.02 + b * 3.73;
+      vane.rotation.y = -va;
+      rocket.add(vane);
+    }
+
+    // ---- 箭体上的装饰环 ----
+    for (var b = 0; b < 2; b++) {
+      var byy = Y0 + BH * (0.075 + b * 0.70);
+      var band = new THREE.Mesh(
+        new THREE.CylinderGeometry(radiusAt(byy) + 0.03, radiusAt(byy) + 0.03, 0.1, 72), gold
+      );
+      band.position.y = byy;
       rocket.add(band);
     }
 
-    // ---- 头锥 ----
-    var nose = new THREE.Mesh(new THREE.ConeGeometry(1.46, 2.9, 48), gold);
-    nose.position.y = 7.75;
-    rocket.add(nose);
+    // ---- 级间段（二级火箭的分段位置）----
+    var yi = Y0 + BH * 0.855;
+    var interstage = new THREE.Mesh(
+      new THREE.CylinderGeometry(radiusAt(yi) + 0.05, radiusAt(yi) + 0.09, 0.34, 72), dark
+    );
+    interstage.position.y = yi;
+    rocket.add(interstage);
 
-    // 头锥根部的过渡环（收口，不然圆锥和圆柱直接撞在一起很生硬）
-    var collar = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.24, 48), gold);
-    collar.position.y = 6.32;
-    rocket.add(collar);
+    var interstageRing = new THREE.Mesh(
+      new THREE.TorusGeometry(radiusAt(yi) + 0.07, 0.055, 8, 72), gold
+    );
+    interstageRing.rotation.x = Math.PI / 2;
+    interstageRing.position.y = yi + 0.17;
+    rocket.add(interstageRing);
 
-    // 顶尖小天线
-    var antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.1, 8),
-      new THREE.MeshStandardMaterial({ color: 0xbfc7dd, roughness: 0.3, metalness: 0.9 }));
-    antenna.position.y = 9.7;
-    rocket.add(antenna);
-    var tip = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 12),
-      new THREE.MeshBasicMaterial({ color: 0xff4d4d, fog: false }));
-    tip.position.y = 10.28;
-    rocket.add(tip);
-    rocket.userData.tip = tip;
+    // ---- 顶端 4 个姿态控制喷口（RCS）----
+    var rcsMat = new THREE.MeshStandardMaterial({
+      color: 0x39405c, roughness: 0.45, metalness: 0.8
+    });
+    var yRCS = Y0 + BH * 0.945;
+    for (var r = 0; r < 4; r++) {
+      var ra = (r / 4) * Math.PI * 2 + Math.PI / 4;
+      var rr2 = radiusAt(yRCS) - 0.02;
+      var rcs = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.34, 8), rcsMat);
+      rcs.position.set(Math.cos(ra) * rr2, yRCS, Math.sin(ra) * rr2);
+      rcs.rotation.z = Math.cos(ra) * 0.5;
+      rcs.rotation.x = -Math.sin(ra) * 0.5;
+      rocket.add(rcs);
+    }
+
+    // ---- 沿箭体的一条外置导管 ----
+    var yPipeA = Y0 + BH * 0.06;
+    var yPipeB = Y0 + BH * 0.80;
+    var pipeCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0.60, yPipeA, radiusAt(yPipeA) - 0.20),
+      new THREE.Vector3(0.66, Y0 + BH * 0.30, radiusAt(Y0 + BH * 0.30) - 0.22),
+      new THREE.Vector3(0.70, Y0 + BH * 0.56, radiusAt(Y0 + BH * 0.56) - 0.22),
+      new THREE.Vector3(0.70, yPipeB, radiusAt(yPipeB) - 0.20)
+    ]);
+    var pipe = new THREE.Mesh(
+      new THREE.TubeGeometry(pipeCurve, 40, 0.045, 8, false),
+      new THREE.MeshStandardMaterial({ color: 0xb9c2d8, roughness: 0.35, metalness: 0.85 })
+    );
+    rocket.add(pipe);
 
     // ---- 尾喷管 ----
-    // 外层：上窄下宽的开口锥
     var bell = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.02, 1.62, 1.25, 40, 1, true), dark
+      new THREE.CylinderGeometry(1.02, 1.62, 1.25, 48, 1, true), dark
     );
     bell.position.y = 0.16;
     bell.material.side = THREE.DoubleSide;
     rocket.add(bell);
 
-    // 内层：暖色，点火后靠它发光
     var bellInner = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.72, 1.25, 1.2, 32, 1, true),
+      new THREE.CylinderGeometry(0.72, 1.25, 1.2, 40, 1, true),
       new THREE.MeshBasicMaterial({
         color: 0xffb45c, transparent: true, opacity: 0, fog: false,
         side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false
@@ -521,108 +582,7 @@
     rocket.add(bellInner);
     rocket.userData.bellInner = bellInner;
 
-    // ---- 尾翼：3 片，后掠梯形 ----
-    // 形状画在 XY 平面：x 是「离箭体的距离」，y 是高度。
-    // 上边短、下边长 → 后掠感。
-    var finShape = new THREE.Shape();
-    finShape.moveTo(0, 2.55);
-    finShape.lineTo(0, 0.05);
-    finShape.lineTo(1.62, 0.42);
-    finShape.lineTo(1.42, 1.42);
-    finShape.closePath();
-
-    var finGeo = new THREE.ExtrudeGeometry(finShape, {
-      depth: 0.15, bevelEnabled: true, bevelSize: 0.035,
-      bevelThickness: 0.035, bevelSegments: 2
-    });
-    finGeo.translate(0, 0, -0.075);   // 让厚度居中
-
-    for (var i = 0; i < 3; i++) {
-      var a = (i / 3) * Math.PI * 2;
-      // holder 只管绕 Y 转，翼片自己负责贴到箭体表面
-      var holder = new THREE.Group();
-      holder.rotation.y = a;
-      var finMesh = new THREE.Mesh(finGeo, gold);
-      finMesh.position.set(1.72, 0.15, 0);
-      finMesh.rotation.z = 0;
-      holder.add(finMesh);
-      rocket.add(holder);
-    }
-
-    // ---- 舷窗：奶龙坐在里面 ----
-    var winGroup = new THREE.Group();
-    winGroup.position.set(0, 4.55, 1.66);
-
-    var winTex = new THREE.TextureLoader().load('core.webp');
-    winTex.encoding = THREE.sRGBEncoding;
-
-    var winDisc = new THREE.Mesh(
-      new THREE.CircleGeometry(0.88, 40),
-      new THREE.MeshBasicMaterial({ map: winTex, transparent: true, fog: false })
-    );
-    winGroup.add(winDisc);
-
-    var winRim = new THREE.Mesh(
-      new THREE.TorusGeometry(0.9, 0.1, 14, 56),
-      new THREE.MeshStandardMaterial({ color: 0xfece0e, roughness: 0.42, metalness: 0.45, emissive: 0x2a1f00, emissiveIntensity: 0.6 })
-    );
-    winGroup.add(winRim);
-
-    // 舷窗外一圈柔光，像舱内透出来的
-    var winGlow = new THREE.Mesh(
-      new THREE.CircleGeometry(1.5, 36),
-      new THREE.MeshBasicMaterial({
-        color: 0xffe9a8, transparent: true, opacity: 0.16, fog: false,
-        blending: THREE.AdditiveBlending, depthWrite: false
-      })
-    );
-    winGlow.position.z = -0.02;
-    winGroup.add(winGlow);
-    rocket.add(winGroup);
-
-    /* ---------------- 细节零件 ---------------- */
-
-    // 级间段（二级火箭的分段位置）：比普通金环更粗，带一点凸起
-    var interstage = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.60, 1.66, 0.34, 64), dark
-    );
-    interstage.position.y = 5.62;
-    rocket.add(interstage);
-
-    var interstageRing = new THREE.Mesh(
-      new THREE.TorusGeometry(1.62, 0.055, 8, 64), gold
-    );
-    interstageRing.rotation.x = Math.PI / 2;
-    interstageRing.position.y = 5.79;
-    rocket.add(interstageRing);
-
-    // 顶端 4 个小姿态控制喷口（RCS）
-    var rcsMat = new THREE.MeshStandardMaterial({
-      color: 0x39405c, roughness: 0.45, metalness: 0.8
-    });
-    for (var r = 0; r < 4; r++) {
-      var ra = (r / 4) * Math.PI * 2 + Math.PI / 4;
-      var rcs = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.34, 8), rcsMat);
-      rcs.position.set(Math.cos(ra) * 1.50, 6.06, Math.sin(ra) * 1.50);
-      rcs.rotation.z = Math.cos(ra) * 0.5;
-      rcs.rotation.x = -Math.sin(ra) * 0.5;
-      rocket.add(rcs);
-    }
-
-    // 沿箭体的一条外置导管（从尾段穿到级间段）
-    var pipeCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(0.62, 1.10, 1.42),
-      new THREE.Vector3(0.66, 2.40, 1.40),
-      new THREE.Vector3(0.70, 3.90, 1.36),
-      new THREE.Vector3(0.72, 5.20, 1.32)
-    ]);
-    var pipe = new THREE.Mesh(
-      new THREE.TubeGeometry(pipeCurve, 32, 0.045, 8, false),
-      new THREE.MeshStandardMaterial({ color: 0xb9c2d8, roughness: 0.35, metalness: 0.85 })
-    );
-    rocket.add(pipe);
-
-    // 尾段 4 根支撑斜撑（喷管和箭体之间）
+    // 尾段 4 根支撑斜撑
     var strutMat = new THREE.MeshStandardMaterial({
       color: 0x2b3350, roughness: 0.55, metalness: 0.7
     });
@@ -635,58 +595,135 @@
       rocket.add(strut);
     }
 
-    // ---- 贴花：用圆柱的一段弧，紧贴箭体曲面 ----
-    // ⚠️ 不用平面片：平面贴在圆柱上会一半陷进壳体、边缘还会穿出来。
-    function arcDecal(radius, height, arcDeg, tex, offsetY) {
+    // ---- 尾翼：3 片后掠梯形 ----
+    var FIN_H = 3.7;
+    var finShape = new THREE.Shape();
+    finShape.moveTo(0, FIN_H);
+    finShape.lineTo(0, 0.05);
+    finShape.lineTo(1.88, 0.48);
+    finShape.lineTo(1.64, 1.72);
+    finShape.closePath();
+
+    var finGeo = new THREE.ExtrudeGeometry(finShape, {
+      depth: 0.15, bevelEnabled: true, bevelSize: 0.035,
+      bevelThickness: 0.035, bevelSegments: 2
+    });
+    finGeo.translate(0, 0, -0.075);
+
+    for (var i = 0; i < 3; i++) {
+      var a = (i / 3) * Math.PI * 2;
+      var holder = new THREE.Group();
+      holder.rotation.y = a;
+      var finMesh = new THREE.Mesh(finGeo, gold);
+      finMesh.position.set(RB - 0.02, 0.55, 0);
+      holder.add(finMesh);
+      rocket.add(holder);
+    }
+
+    // ---- 舷窗：奶龙坐在里面 ----
+    // 做成「凸出的圆形舷窗」：一段短筒从壳体伸出，玻璃嵌在筒口，外面套金环。
+    // 直接把平面圆片贴在圆柱上，边缘会浮在壳体外面，很假。
+    var yWin = Y0 + BH * 0.635;
+    var rWin = radiusAt(yWin);
+    var winGroup = new THREE.Group();
+    winGroup.position.set(0, yWin, rWin);
+    rocket.add(winGroup);
+
+    var winBarrel = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.92, 0.86, 0.34, 40, 1, true),
+      new THREE.MeshStandardMaterial({
+        color: 0xdfe4f2, roughness: 0.4, metalness: 0.35, side: THREE.DoubleSide
+      })
+    );
+    winBarrel.rotation.x = Math.PI / 2;
+    winBarrel.position.z = 0.15;
+    winGroup.add(winBarrel);
+
+    var winTex = new THREE.TextureLoader().load('core.webp');
+    winTex.encoding = THREE.sRGBEncoding;
+
+    var winDisc = new THREE.Mesh(
+      new THREE.CircleGeometry(0.85, 40),
+      new THREE.MeshBasicMaterial({ map: winTex, transparent: true, fog: false })
+    );
+    winDisc.position.z = 0.24;
+    winGroup.add(winDisc);
+
+    var winRim = new THREE.Mesh(
+      new THREE.TorusGeometry(0.9, 0.1, 14, 56),
+      new THREE.MeshStandardMaterial({
+        color: 0xfece0e, roughness: 0.42, metalness: 0.45,
+        emissive: 0x2a1f00, emissiveIntensity: 0.6
+      })
+    );
+    winRim.position.z = 0.31;
+    winGroup.add(winRim);
+
+    var winGlow = new THREE.Mesh(
+      new THREE.CircleGeometry(1.45, 36),
+      new THREE.MeshBasicMaterial({
+        color: 0xffe9a8, transparent: true, opacity: 0.16, fog: false,
+        blending: THREE.AdditiveBlending, depthWrite: false
+      })
+    );
+    winGlow.position.z = 0.33;
+    winGroup.add(winGlow);
+
+    // ---- 贴花：用圆柱的一段弧，紧贴曲面 ----
+    // ⚠️ 半径必须大于该高度处的箭体半径，否则整块贴花会陷进壳体里看不见。
+    function arcDecal(y, height, arcDeg, tex, extraR) {
       var theta = arcDeg * Math.PI / 180;
-      var geo = new THREE.CylinderGeometry(
-        radius, radius, height, 40, 1, true, -theta / 2, theta
-      );
+      var rad = radiusAt(y) + (extraR || 0.075);
+      var geo = new THREE.CylinderGeometry(rad, rad, height, 44, 1, true, -theta / 2, theta);
       var mat = new THREE.MeshBasicMaterial({
         map: tex, transparent: true, depthWrite: false,
         side: THREE.FrontSide, fog: false
       });
       var m = new THREE.Mesh(geo, mat);
-      m.position.y = offsetY;
+      m.position.y = y;
       return m;
     }
 
-    // --- 「奶龙号」：贴在 +X 面、尾翼上方，横排 ---
-    //
-    // 位置是算过的：
-    //  · 三片尾翼在 0°/120°/240°（0° 正好是 +X），但它们最高只到 y≈3.0，
-    //    所以 y=4.15 处整个圆周都是空的；
-    //  · 贴在 +X 而不是 +Z：火箭进入太空后侧倾 -90°，±Z 面会变成朝上/朝下，
-    //    只有 ±X 面始终是「侧面」，追尾镜头才看得见。
-    var nameTex2 = makeTexture(1024, 256, function (g, w, h) {
+    /* --- 「奶龙号」竖排字：贴在 +X 面（尾翼上方），并偏 30° 正对镜头 ---
+       · 角度取 30°：三片尾翼在 0°/120°/240°，30° 正好在两片之间，
+         且尾翼最高只到 y≈3.75，字贴在 4.1 上方完全不冲突；
+       · 贴在 +X 附近而不是 +Z：火箭进入太空会侧倾 -90°，
+         ±Z 面变成朝上/朝下，只有 ±X 附近始终是「侧面」，
+         追尾镜头才看得见。
+       竖排：三个字在 canvas 里纵向排列，贴到圆柱上仍然是竖着的。 */
+    var nameTex2 = makeTexture(256, 1024, function (g, w, h) {
       g.clearRect(0, 0, w, h);
       g.textAlign = 'center';
       g.textBaseline = 'middle';
-      g.font = '900 172px "PingFang SC","Microsoft YaHei",sans-serif';
-      // 深金字 + 浅色外发光：白箭体上能压得住
-      g.shadowColor = 'rgba(255,255,255,.95)';
-      g.shadowBlur = 26;
-      g.fillStyle = '#8a6a00';
-      g.fillText('奶龙号', w / 2, h / 2 + 6);
-      // 再浅浅描一层，增强立体感
-      g.shadowBlur = 0;
-      g.strokeStyle = 'rgba(255,255,255,.55)';
-      g.lineWidth = 3;
-      g.strokeText('奶龙号', w / 2, h / 2 + 6);
+      var chars = ['奶', '龙', '号'];
+      for (var k = 0; k < chars.length; k++) {
+        g.save();
+        g.font = '900 168px "PingFang SC","Microsoft YaHei",sans-serif';
+        // 深金字 + 浅色外发光：白箭体上也能压得住
+        g.shadowColor = 'rgba(255,255,255,.95)';
+        g.shadowBlur = 22;
+        g.fillStyle = '#8a6a00';
+        g.fillText(chars[k], w / 2, 215 + k * 250);
+        // 描一圈亮边，增强立体感
+        g.shadowBlur = 0;
+        g.lineWidth = 4;
+        g.strokeStyle = 'rgba(255,255,255,.5)';
+        g.strokeText(chars[k], w / 2, 215 + k * 250);
+        g.restore();
+      }
     });
-    var nameDecal2 = arcDecal(1.63, 0.98, 70, nameTex2, 3.15);
-    nameDecal2.rotation.y = Math.PI * 0.194;   // 约 35°，正对发射台镜头
+    var yName = Y0 + BH * 0.395;
+    var nameDecal2 = arcDecal(yName, 2.35, 44, nameTex2);
+    nameDecal2.rotation.y = Math.PI * 0.167;   // 30°
     rocket.add(nameDecal2);
 
     // --- 广州大学校徽：贴在 +Z 面（舷窗下方）---
-    // ⚠️ 不放 +X：三片尾翼正好指向 +X、-X-Z、-X+Z，
-    //    徽章放 +X 会被尾翼完全挡住。+Z / -Z 是空的。
-
-    // ⚠️ 半径必须大于该高度处的箭体半径，否则整块贴花会陷进壳体里看不见。
-    //    箭体是上细下粗的锥（底部 1.74、顶部 1.46），y≈2.25 处约 1.66，所以取 1.72。
-    var logoDecal = arcDecal(1.70, 1.38, 58, null, 2.02);
-    logoDecal.rotation.y = 0;            // 朝向 +Z
+    var yLogo = Y0 + BH * 0.185;
+    var logoDecal = arcDecal(yLogo, 1.5, 54, null);
+    logoDecal.rotation.y = 0;                  // 朝向 +Z
     rocket.add(logoDecal);
+
+    // 等图加载完画进 canvas，并加一圈金边 ——
     // ⚠️ 用原生 Image 而不用 THREE.TextureLoader：
     //    TextureLoader 的回调给的是 Texture 对象，不是 Image，
     //    直接 drawImage 会抛「provided value is not of type HTMLImageElement」。
@@ -697,11 +734,9 @@
       var g = c.getContext('2d');
       g.clearRect(0, 0, 512, 512);
 
-      // 外圈金边
       g.strokeStyle = '#fece0e';
       g.lineWidth = 20;
       g.beginPath(); g.arc(256, 256, 232, 0, Math.PI * 2); g.stroke();
-      // 内侧一圈暗金，做出金属厚度
       g.strokeStyle = 'rgba(140,106,0,.75)';
       g.lineWidth = 6;
       g.beginPath(); g.arc(256, 256, 243, 0, Math.PI * 2); g.stroke();
@@ -718,6 +753,29 @@
       console.error('[logo] 校徽加载失败，检查 assets/gzhu-logo.png 是否存在');
     };
     logoImg.src = 'assets/gzhu-logo.png';
+
+    // ---- 天线 + 顶端飞行灯 ----
+    var antenna = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.035, 0.035, 1.2, 8),
+      new THREE.MeshStandardMaterial({ color: 0xbfc7dd, roughness: 0.3, metalness: 0.9 })
+    );
+    antenna.position.y = YTOP + NOSE_H + 0.55;
+    rocket.add(antenna);
+
+    var tip = new THREE.Mesh(
+      new THREE.SphereGeometry(0.11, 12, 12),
+      new THREE.MeshBasicMaterial({ color: 0xff4d4d, fog: false })
+    );
+    tip.position.y = YTOP + NOSE_H + 1.18;
+    rocket.add(tip);
+    rocket.userData.tip = tip;
+
+    var tipCap = new THREE.Mesh(
+      new THREE.SphereGeometry(0.1, 16, 12),
+      new THREE.MeshStandardMaterial({ color: 0x8f97b3, roughness: 0.25, metalness: 0.95 })
+    );
+    tipCap.position.y = YTOP + NOSE_H - 0.02;
+    rocket.add(tipCap);
   })();
 
   /* ============================================================
@@ -1391,14 +1449,14 @@
       var m = smooth(st.pitch);
 
       // B 的收尾机位（asc = 1 时，和上面那组 lerp 的终值一致）
-      var bX = 11.5, bY = SPACE_Y + 1.3 - 1.6, bZ = 15;
+      var bX = 12, bY = SPACE_Y + 1.3 - 1.6, bZ = 16;
 
       // C：箭体后上方 + 侧偏。
       // ⚠️ 不要正对 -Z 后方：那样只能看到一个喷口圆盘，
       //    偏到侧面才能看到箭体轮廓、尾翼和尾焰。
-      var cX = 14.5;
-      var cY = st.y + 4.6;
-      var cZ = st.z + 12;
+      var cX = 18.5;
+      var cY = st.y + 3.8;
+      var cZ = st.z + 8.5;
 
       px = lerp(bX, cX, m);
       py = lerp(bY, cY, m);
