@@ -3592,6 +3592,11 @@
     updateRocket(now);
 
 
+    // 「出发」按钮一进来就显示：想直接走的人不用等升空。
+    // ⚠️ 不能放在 updateOverlay 里判断 —— 倒计时那段（el < T.PRE）
+    //    会提前 return，那条路径根本走不到。
+    revealGoBtn();
+
     if (els.goBtn) els.goBtn.addEventListener("click", depart);
 
     // 校史翻页按钮（放在这里而不是 bindOrbit —— els 要到这一节才定义）
