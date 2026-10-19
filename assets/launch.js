@@ -790,13 +790,20 @@
     rocket.add(winGroup);
 
     var winBarrel = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.92, 0.86, 0.34, 40, 1, true),
+      // 壳体是**曲面**：舷窗中心贴在半径 rWin 上，但圆盘边缘（x=±0.9）
+      // 处的壳体其实已经退到 sqrt(r²-0.81) ≈ 1.19 ——
+      // 原来筒只有 0.34 长、中心在 +0.15，内端只到 -0.02，
+      // 边缘就露出 0.3 的缝，看起来像悬空的一块玻璃。
+      // 现在把筒加长到 1.1 并向内平移，让它从壳体内部穿出来。
+      new THREE.CylinderGeometry(0.94, 0.90, 1.10, 40, 1, true),
       new THREE.MeshStandardMaterial({
         color: 0xdfe4f2, roughness: 0.4, metalness: 0.35, side: THREE.DoubleSide
       })
     );
     winBarrel.rotation.x = Math.PI / 2;
-    winBarrel.position.z = 0.15;
+    // 内端 -0.82（世界半径 0.68，深深埋进壳体）；
+    // 外端 +0.28，刚好停在外圈金环（0.31）后面一点，不露白筒边。
+    winBarrel.position.z = -0.27;
     winGroup.add(winBarrel);
 
     // 优先用内联的 data URI（见 assets/textures.js）。
