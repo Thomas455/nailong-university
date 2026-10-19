@@ -1,9 +1,14 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
 <meta name="baidu-site-verification" content="codeva-4BVXCTJLWq" />
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- 禁用缩放：maximum-scale=1 + user-scalable=no。
+     这是阻止「双击放大」最可靠的一条 —— touch-action 在部分老 WebView
+     和 iOS 上不生效，viewport 这条基本都能兜住。
+     代价是双指捏合也一起禁掉了；这一页是 3D 演示而不是长文阅读，
+     权衡后接受。若要保留捏合，把后面两段删掉即可。 -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>宇宙奶龙大学</title>
 
 <!-- ============================================================
@@ -106,6 +111,13 @@
     font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
     -webkit-tap-highlight-color: transparent;
   }
+/* 整页禁止「双击缩放」。
+   manipulation = 干掉双击缩放和 300ms 点击延迟，但**保留双指捏合缩放** ——
+   直接 user-scalable=no 会把捏合也禁掉，那是无障碍倒退，不做。
+   画布那层另外有 touch-action: none（拖动环视要用），两者叠加正好。 */
+html,
+body { touch-action: manipulation; }
+
   body { user-select: none; }
 
   /* 3D 画布铺满全屏。fixed 而不是 absolute：手机地址栏伸缩时不跟着抖。 */
@@ -741,6 +753,14 @@
   'use strict';
 
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* 双击缩放的兜底。
+     touch-action: manipulation 在现代浏览器（含 iOS 13+）已经够了，
+     但部分老 WebView 只认双击事件的 preventDefault。
+     注意：这里只拦 dblclick，不影响单指拖动、也不影响双指捏合。 */
+  document.addEventListener('dblclick', function (e) {
+    e.preventDefault();
+  }, { passive: false });
 
   /* ---------- 没有 3D 能力时退回静态页面 ----------
      三种情况都算：three.js 没加载（被拦截）、WebGL 创建失败（老设备）、

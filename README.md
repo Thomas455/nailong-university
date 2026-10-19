@@ -257,6 +257,13 @@ python -m http.server 8790
 | `#hist-live`（`aria-live="polite"`） | 校史画在 canvas 上，读屏完全读不到；每换一节播报「校史第 N 节，共 8 节：年份　标题」 |
 | `#hint` 加 `role="status"` | 状态文案变化（正在飞往 → 已抵达）会被播报 |
 | 方向键 ← → | 和翻页按钮等价，键盘用户不用去猜屏幕能点 |
+> **移动端缩放**：整页禁用了双击放大 ——
+> `html/body` 用 `touch-action: manipulation`（去掉双击缩放和 300ms 点击延迟，
+> 保留捏合），画布另外是 `touch-action: none`（拖动环视要用）。
+> 部分老 WebView 和 iOS 不认 `touch-action`，所以 viewport 里还有
+> `maximum-scale=1, user-scalable=no` 兜底 —— 代价是双指捏合也一起禁掉了。
+> 这一页是 3D 演示不是长文阅读，权衡后接受；要恢复捏合，删掉那两段即可。
+
 | `.sr-only` 正文 | 首页内容全在 canvas 里，搜索引擎和读屏都抓不到；用 clip 方式视觉隐藏一份真文本 |
 
 > ⚠️ 已知遗留：`index.html` 里有一个 `var reduce`（检测 `prefers-reduced-motion`）
