@@ -1843,7 +1843,7 @@
     // 升空阶段还没进太空，藏起来
     sp.obj.visible = st.asc >= 1;
     // 飞跃文字：同样只在太空段出现
-    if (window.__updateFlyingText) window.__updateFlyingText(rz, st.asc >= 1);
+    if (flyUpdater) flyUpdater(rz, st.asc >= 1);
   }
 
   /* ============================================================
@@ -1994,6 +1994,10 @@
   ];
 
   var FLY_N = Math.max(6, Math.round(16 * QUALITY));
+
+  // 飞字系统的每帧更新函数，由 buildFlyingText 赋值，主循环调用
+  var flyUpdater = null;
+
   var flyingText = [];
 
   (function buildFlyingText() {
@@ -2056,7 +2060,6 @@
       if (!flyPool[fbk]) flyPool[fbk] = [];
       flyPool[fbk].push(FLY_FACTS[fb].t);
     }
-    window.__flyPool = flyPool;   // 调试用
 
     function pickFlyText() {
       // ⚠️ 这个函数在场景搭建阶段就会被调用一次（初始化 16 个精灵时），
@@ -2102,7 +2105,8 @@
     }
 
     // 每帧回收：掠过身后就换一句、换个位置再来
-    window.__updateFlyingText = function (rz, visible) {
+    // 挂到模块内变量上，不污染 window（原来叫 window.__updateFlyingText）
+    flyUpdater = function (rz, visible) {
       // 主线换到下一节时，把「还很远、看不清」的那些重画成新桶的句子。
       // 近处的不动 —— 换字会看得见，很跳。
       if (state.historyIdx !== lastFlyBucket) {
