@@ -83,7 +83,34 @@
   }
 
   renderer.setClearColor(0x05070f, 1);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  /* ============================================================
+     性能档位
+
+     场景里的东西是按桌面机的余量堆的：3400 颗星、46 块碎石、
+     160 根速度线、320 个火星、1100 个尾迹粒子、16 个飞字精灵。
+     在中端手机上这是跑不动的 —— 而且 3 倍屏上 setPixelRatio(2)
+     等于渲染 4 倍像素。
+
+     这里按「屏幕宽度 + 是否触屏 + 硬件并发数」估一个档位。
+     不追求精确识别机型（做不到也不该做），只要把移动端整体降一档，
+     别让它卡成幻灯片。
+     ============================================================ */
+  var IS_MOBILE = (function () {
+    var w = window.innerWidth || 999;
+    var touch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    var cores = navigator.hardwareConcurrency || 4;
+    return (w < 820 && touch) || cores <= 4;
+  })();
+
+  // 低配再降一档：窄屏 + 核心数少
+  var IS_LOW = IS_MOBILE && ((window.innerWidth || 999) < 430 ||
+    (navigator.hardwareConcurrency || 4) <= 4);
+
+  // 统一用一个系数去缩规模：桌面 1、手机 0.55、低配 0.34
+  var QUALITY = IS_LOW ? 0.34 : (IS_MOBILE ? 0.55 : 1);
+
+  // 像素比：桌面上限 2，手机上 1.5 —— 这是最省算力的一项
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, IS_MOBILE ? 1.5 : 2));
   renderer.outputEncoding = THREE.sRGBEncoding;
   // ACES 让高光平滑滚降 —— 不做的话白箭体 + 强光会糊成一片死白
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -124,7 +151,7 @@
      一个大球壳，每帧跟着相机走（星空本来就「无限远」，
      跟着相机才不会在飞行时穿帮）。 */
   var starField = (function () {
-    var COUNT = 3400;
+    var COUNT = Math.round(3400 * QUALITY);
     var pos = new Float32Array(COUNT * 3);
     var col = new Float32Array(COUNT * 3);
     var c = new THREE.Color();
@@ -941,7 +968,7 @@
 
   // 火星
   var embers = (function () {
-    var N = 320;
+    var N = Math.round(320 * QUALITY);
     var pos = new Float32Array(N * 3);
     var vel = new Float32Array(N * 3);
     var life = new Float32Array(N);
@@ -989,7 +1016,7 @@
         频繁 new/GC 在手机上会掉帧。
      ============================================================ */
   var trail = (function () {
-    var MAX = 1100;
+    var MAX = Math.round(1100 * QUALITY);
     var pos = new Float32Array(MAX * 3);
     var col = new Float32Array(MAX * 3);
     var siz = new Float32Array(MAX);
@@ -1376,7 +1403,7 @@
   scene.add(debrisGroup);
 
   (function buildDebris() {
-    var N = 46;
+    var N = Math.round(46 * QUALITY);
     // 岩石贴图：深灰底 + 颗粒噪声 + 陨石坑 + 裂纹。
     // 纯色低模在太空里像一块白塑料；有了纹理才有「石头」的质感。
     var rockTex = makeTexture(512, 512, function (g, w, h) {
@@ -1472,7 +1499,7 @@
 
   // 速度线：一堆沿 Z 方向的细线段
   var speedLines = (function () {
-    var N = 160;
+    var N = Math.round(160 * QUALITY);
     var pos = new Float32Array(N * 6);      // 每根线两个端点
     var base = new Float32Array(N * 3);     // 每根线的中心（用来回收）
     var len = new Float32Array(N);
@@ -1613,7 +1640,7 @@
     '博学笃行 · 与时俱进'
   ];
 
-  var FLY_N = 16;
+  var FLY_N = Math.max(6, Math.round(16 * QUALITY));
   var flyingText = [];
 
   (function buildFlyingText() {
