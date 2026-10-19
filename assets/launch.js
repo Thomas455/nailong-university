@@ -2513,9 +2513,13 @@
     var visW = visH * camera.aspect;
 
     var narrow = camera.aspect < 0.85;
-    var wFrac = narrow ? 0.80 : 0.50;
+    // 竖屏：卡片要挪到画面上部。
+    // 原来 offYFrac 只给 0.15，卡片正好压在火箭身上 ——
+    // 手机屏幕窄，火箭纵向占满，中间那块是它的地盘。
+    // 现在抬到 0.30，落在火箭鼻锥上方，同时略微收窄避免贴边。
+    var wFrac = narrow ? 0.70 : 0.50;
     var offXFrac = narrow ? 0 : -0.16;
-    var offYFrac = narrow ? 0.15 : 0.17;
+    var offYFrac = narrow ? 0.30 : 0.17;
 
     var w = visW * wFrac;
     var h = w * (histCanvas.height / histCanvas.width);
