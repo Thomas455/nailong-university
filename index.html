@@ -5,12 +5,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>宇宙奶龙大学</title>
-<meta name="description" content="乘坐奶龙号，从发射台飞往宇宙奶龙大学。">
+<meta name="description" content="宇宙奶龙大学：乘坐奶龙号从发射台飞向太空，沿途展示广州大学校史——1927 年陈炳权先生创办私立广州大学，2000 年五校合并，2027 年迎来建校一百周年。">
 <!-- 本站只做深色一套，手机浏览器顶栏也跟着变深 -->
 <meta name="theme-color" content="#080b1a">
 <meta property="og:type" content="website">
 <meta property="og:title" content="宇宙奶龙大学">
-<meta property="og:description" content="乘坐奶龙号，从发射台飞往宇宙奶龙大学">
+<meta property="og:description" content="乘坐奶龙号从发射台飞向太空，沿途展示广州大学校史：1927 年创办，2000 年五校合并，2027 年建校一百周年。">
 <!-- 换域名时改这里（必须是绝对地址，微信抓不到图就不显示卡片） -->
 <meta property="og:image" content="https://xn--psszg58cydsdq780c.com/og.png">
 <meta property="og:image:width" content="1200">
@@ -82,6 +82,18 @@
      第二帧 5.6 秒。这期间如果直接把 canvas 亮出来，用户看到的是黑屏，
      很容易以为页面挂了。
      所以先盖一层夜空底 + 一行字，等 renderer.compile() 跑完再淡出。 */
+  /* 视觉隐藏但可被搜索引擎和读屏读到。
+     不用 display:none / visibility:hidden —— 那些会被当成隐藏内容的作弊信号。 */
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    margin: -1px; padding: 0; border: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
   #boot {
     position: fixed; inset: 0; z-index: 6;
     display: flex; flex-direction: column;
@@ -567,6 +579,48 @@
   // <noscript> 里给了直链，这里不再重复处理。
 })();
 </script>
+
+<!-- ============================================================
+     给搜索引擎和读屏的正文
+
+     整页的内容都是 canvas 画出来的，HTML 里几乎是空的 ——
+     搜索引擎抓不到、分享预览也是空白。作为一个学校入口页这个损失很实在。
+
+     所以这里放一份真实的可读文本：用 clip 方式视觉隐藏
+     （而不是 display:none —— 后者有被判成隐藏内容的风险），
+     内容与 3D 场景里展示的一致。
+     ============================================================ -->
+<section class="sr-only" aria-label="广州大学校史简介">
+  <h1>宇宙奶龙大学 · 广州大学校史</h1>
+  <p>乘坐奶龙号，从发射台升空，进入太空，飞向广州大学星。飞行途中依次展示广州大学的重要校史节点，最终抵达广州大学。</p>
+
+  <ul>
+    <li>1927 年：陈炳权先生创办私立广州大学，定校训「博学笃行」。</li>
+    <li>1944 年：抗战期间七度迁徙仍办学不辍；全校师生为抗日捐献战斗机。</li>
+    <li>1953–1985 年：五校并起，广州教育学院、广州师范学院等五所市属高校相继创办。</li>
+    <li>2000 年：五校合并，组建新的广州大学，校训合成「博学笃行、与时俱进」。</li>
+    <li>2005 年：主体迁入广州大学城，办学空间与硬件条件得到根本性改善。</li>
+    <li>2006 年：被增列为博士学位授予单位，办学层次跃升。</li>
+    <li>2018 年：工程学首次进入 ESI 全球前 1%，实现零的突破。</li>
+    <li>2027 年：建校一百周年，百年学府迎来百年校庆。</li>
+  </ul>
+
+  <p>广州大学官方网站：<a href="https://www.gzhu.edu.cn/">www.gzhu.edu.cn</a></p>
+</section>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CollegeOrUniversity",
+  "name": "广州大学",
+  "alternateName": "Guangzhou University",
+  "url": "https://www.gzhu.edu.cn/",
+  "foundingDate": "1927",
+  "slogan": "博学笃行，与时俱进",
+  "description": "广州大学创建于 1927 年，2000 年由五校合并组建，2027 年迎来建校一百周年。"
+}
+</script>
+
 <noscript>
   <div style="position:fixed;left:0;right:0;bottom:70px;text-align:center;z-index:40">
     <a href="https://www.gzhu.edu.cn/"
