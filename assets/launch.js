@@ -2291,18 +2291,15 @@
     }
 
     // 空格：暂停 / 继续。41 秒的动画，想停下来细看某一节时很有用。
+    // 具体逻辑在 togglePause() 里 —— 按钮和空格共用同一份，
+    // 免得两边各写一套、状态和图标对不上。
     window.addEventListener('keydown', function (e) {
       if (e.code !== 'Space' && e.key !== ' ') return;
       var t = e.target;
       if (t && (t.tagName === 'BUTTON' || t.tagName === 'A' ||
                 t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
       e.preventDefault();
-      state.paused = !state.paused;
-      if (els.hint) {
-        els.hint.textContent = state.paused
-          ? '已暂停 · 按空格继续'
-          : '奶龙号正在飞往广州大学星…';
-      }
+      togglePause();
     });
 
     // 方向键：← 上一节、→ 下一节。和「轻点画面」功能对齐，
@@ -2871,7 +2868,8 @@
     histNav: document.getElementById('hist-nav'),
     histPrev: document.getElementById('hist-prev'),
     histNext: document.getElementById('hist-next'),
-    histLive: document.getElementById('hist-live')
+    histLive: document.getElementById('hist-live'),
+    histPause: document.getElementById('hist-pause')
   };
 
   var HISTORY = [
@@ -3232,7 +3230,7 @@
     if (els.countdown && !els.countdown.hidden) els.countdown.hidden = true;
     // 暂停时不要每帧把提示改回去，否则「已暂停」一闪就没了
     if (state.paused && els.hint) {
-      els.hint.textContent = '已暂停 · 按空格继续';
+      els.hint.textContent = '已暂停 · 点中间的按钮继续';
     } else if (els.hint && els.hint.textContent.indexOf('飞往') < 0 &&
                els.hint.textContent.indexOf('已暂停') < 0 &&
                els.hint.textContent.indexOf('已跳到') < 0 &&
@@ -3293,6 +3291,27 @@
      既不用等 30 秒才能走，又保留了叙事节奏。 */
   var goRevealed = false;
   var goCentered = false;
+
+  /* 暂停 / 继续。
+
+     按钮和空格键共用这份逻辑 —— 分开写的话，按空格改了 state 却忘了
+     同步按钮的 aria-pressed，图标就会和实际状态对不上。 */
+  function togglePause() {
+    if (state.arrived) return;
+    state.paused = !state.paused;
+
+    // 按钮：图标换（CSS 靠 aria-pressed 切）、读屏标签换
+    if (els.histPause) {
+      els.histPause.setAttribute('aria-pressed', state.paused ? 'true' : 'false');
+      els.histPause.setAttribute('aria-label', state.paused ? '继续' : '暂停');
+    }
+
+    if (els.hint) {
+      els.hint.textContent = state.paused
+        ? '已暂停 · 点中间的按钮继续'
+        : '奶龙号正在飞往广州大学星…';
+    }
+  }
 
   /* 跳到下一节校史。
 
@@ -3572,6 +3591,7 @@
     updateCamera(now, st, true);
     updateRocket(now);
 
+
     if (els.goBtn) els.goBtn.addEventListener("click", depart);
 
     // 校史翻页按钮（放在这里而不是 bindOrbit —— els 要到这一节才定义）
@@ -3585,6 +3605,12 @@
       els.histPrev.addEventListener("click", function (e) {
         e.stopPropagation();
         rewindHistory();
+      });
+    }
+    if (els.histPause) {
+      els.histPause.addEventListener("click", function (e) {
+        e.stopPropagation();
+        togglePause();
       });
     }
 

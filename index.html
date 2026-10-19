@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
 <head>
 <meta name="baidu-site-verification" content="codeva-4BVXCTJLWq" />
@@ -397,6 +397,21 @@
   }
   .hist-nav button:disabled { opacity: .32; cursor: default; }
 
+  /* 暂停按钮：圆形图标按钮，夹在两个文字按钮中间 */
+  .hist-nav button.icon-btn {
+    width: 38px; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .hist-nav button.icon-btn svg {
+    width: 17px; height: 17px;
+    fill: currentColor;
+    display: block;
+  }
+  /* 默认显示「暂停」两竖，按下后换成「继续」三角 */
+  .hist-nav button.icon-btn .i-play { display: none; }
+  .hist-nav button.icon-btn[aria-pressed="true"] .i-pause { display: none; }
+  .hist-nav button.icon-btn[aria-pressed="true"] .i-play { display: block; }
+
   /* ---------- 窄屏（竖屏手机）布局 ----------
      390px 宽时，「出发」胶囊、翻页按钮、底部三个导航按钮会挤在一起：
      出发按钮是 fixed 在右下角、文本又长，横向铺开正好压住翻页行。
@@ -632,6 +647,16 @@
          键盘用户也能 Tab 到这里，回车触发。 -->
     <div class="hist-nav" id="hist-nav" hidden>
       <button type="button" id="hist-prev" aria-label="上一节校史">‹ 上一节</button>
+      <!-- 暂停 / 继续：夹在上一节、下一节中间 -->
+      <button type="button" id="hist-pause" class="icon-btn" aria-label="暂停" aria-pressed="false">
+        <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <rect x="7" y="5" width="3.6" height="14" rx="1.3"></rect>
+          <rect x="13.4" y="5" width="3.6" height="14" rx="1.3"></rect>
+        </svg>
+        <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M8.4 5.2v13.6L19 12z"></path>
+        </svg>
+      </button>
       <button type="button" id="hist-next" aria-label="下一节校史">下一节 ›</button>
     </div>
     <!-- 进入太空后提示可以拖动环视，几秒后自动淡出 -->
