@@ -882,16 +882,42 @@
   }
 
   // 内焰：窄而亮
-  var flameInner = makePlume(0.48, 3.6, 0xfff0c8, 0.30);
+  var flameInner = makePlume(0.58, 4.4, 0xfff6d8, 0.75);
   flameInner.rotation.x = Math.PI;
-  flameInner.position.y = -1.9;
+  flameInner.position.y = -2.3;
   flameGroup.add(flameInner);
 
   // 外焰：宽而淡，带橙
-  var flameOuter = makePlume(1.15, 8.0, 0xff8a1e, 0.26);
+  var flameOuter = makePlume(1.32, 9.4, 0xff8a1e, 0.52);
   flameOuter.rotation.x = Math.PI;
-  flameOuter.position.y = -4.1;
+  flameOuter.position.y = -4.8;
   flameGroup.add(flameOuter);
+
+  /* 冲击钻石（shock diamonds）：
+     真实火箭的超音速尾焰里，喷流会周期性压缩、形成一串亮点。
+     加上它，尾焰就不是一根光溜溜的圆锥，而是有节奏的。 */
+  var shockDiamonds = [];
+  (function () {
+    var sdTex = makeTexture(128, 128, function (g) {
+      var grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+      grd.addColorStop(0, 'rgba(255,255,255,1)');
+      grd.addColorStop(0.3, 'rgba(255,238,190,.8)');
+      grd.addColorStop(0.65, 'rgba(255,170,70,.28)');
+      grd.addColorStop(1, 'rgba(255,140,40,0)');
+      g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+    });
+    for (var d = 0; d < 4; d++) {
+      var sp = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: sdTex, transparent: true, opacity: 0.8,
+        blending: THREE.AdditiveBlending, depthWrite: false, fog: false
+      }));
+      sp.position.y = -1.0 - d * 1.35;
+      var sc = 1.15 - d * 0.2;
+      sp.scale.set(sc, sc * 0.72, 1);
+      flameGroup.add(sp);
+      shockDiamonds.push(sp);
+    }
+  })();
 
   // 喷口辉光：一张永远面向相机的精灵。
   // 上一版只靠圆锥表现火焰，一旦镜头绕到箭体后方，就会「看进锥体内壁」，
@@ -1351,8 +1377,64 @@
 
   (function buildDebris() {
     var N = 46;
+    // 岩石贴图：深灰底 + 颗粒噪声 + 陨石坑 + 裂纹。
+    // 纯色低模在太空里像一块白塑料；有了纹理才有「石头」的质感。
+    var rockTex = makeTexture(512, 512, function (g, w, h) {
+      g.fillStyle = '#3c4050';
+      g.fillRect(0, 0, w, h);
+
+      var rnd = 2027;
+      function rand() { rnd = (rnd * 1103515245 + 12345) & 0x7fffffff; return rnd / 0x7fffffff; }
+
+      // 颗粒噪声
+      var img = g.getImageData(0, 0, w, h);
+      var d = img.data;
+      for (var i = 0; i < d.length; i += 4) {
+        var n = (rand() - 0.5) * 64;
+        d[i] = Math.max(0, Math.min(255, d[i] + n));
+        d[i + 1] = Math.max(0, Math.min(255, d[i + 1] + n));
+        d[i + 2] = Math.max(0, Math.min(255, d[i + 2] + n * 1.1));
+      }
+      g.putImageData(img, 0, 0);
+
+      // 陨石坑：暗心 + 亮边
+      for (var c = 0; c < 26; c++) {
+        var cx = rand() * w, cy = rand() * h;
+        var r = 6 + rand() * 34;
+        var shadow = g.createRadialGradient(cx + r * 0.25, cy + r * 0.25, 0, cx, cy, r);
+        shadow.addColorStop(0, 'rgba(12,14,22,.55)');
+        shadow.addColorStop(0.72, 'rgba(30,34,46,.28)');
+        shadow.addColorStop(1, 'rgba(30,34,46,0)');
+        g.fillStyle = shadow;
+        g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
+
+        g.strokeStyle = 'rgba(178,188,210,.30)';
+        g.lineWidth = 1.6;
+        g.beginPath();
+        g.arc(cx, cy, r * 0.94, Math.PI * 1.05, Math.PI * 1.95);
+        g.stroke();
+      }
+
+      // 裂纹
+      g.strokeStyle = 'rgba(16,18,26,.55)';
+      for (var k = 0; k < 16; k++) {
+        g.lineWidth = 0.8 + rand() * 1.8;
+        var x = rand() * w, y = rand() * h;
+        g.beginPath();
+        g.moveTo(x, y);
+        var segs = 3 + Math.floor(rand() * 5);
+        for (var s = 0; s < segs; s++) {
+          x += (rand() - 0.5) * 90;
+          y += (rand() - 0.5) * 90;
+          g.lineTo(x, y);
+        }
+        g.stroke();
+      }
+    });
+
     var rockMat = new THREE.MeshStandardMaterial({
-      color: 0x6b7390, roughness: 0.95, metalness: 0.12
+      map: rockTex, color: 0x9aa0b4,
+      roughness: 0.98, metalness: 0.04, flatShading: true
     });
     // 几种不同面数的低模，混着用，不会看出是同一个模型
     var geos = [
@@ -1476,12 +1558,139 @@
 
     // 升空阶段还没进太空，藏起来
     sp.obj.visible = st.asc >= 1;
+    // 飞跃文字：同样只在太空段出现
+    if (window.__updateFlyingText) window.__updateFlyingText(rz, st.asc >= 1);
   }
+
+  /* ============================================================
+     飞跃文字（小号、高透明度）
+
+     和主线那张大卡片同时存在：大卡片讲一个完整节点，
+     这些短句从身边掠过，把细节铺开，只在余光里提供信息密度。
+
+     实现：每句一张 canvas 纹理；池子里的精灵回收时重画下一句，
+     不新建对象、不新建纹理。
+     ============================================================ */
+  /* ------------------------------------------------------------
+     飞跃文字：主线在讲大段落，同时有大量短句从身边掠过。
+
+     用途是把「七度迁徙」「ESI 13 个学科」这类细节铺开，
+     但它们不该抢主线的注意力 —— 所以做得小、淡。
+
+     来源：羊城派对百年校庆公告的报道 + 项目里的校史文档。
+     ⚠️ 这张表必须定义在飞字系统之前使用，否则运行到那里是 undefined。
+     ------------------------------------------------------------ */
+  var FLY_FACTS = [
+    '1927 陈炳权创办私立广州大学',
+    '校训：博学笃行',
+    '抗战时期七度迁徙',
+    '1944 师生捐献战斗机',
+    '1951 并入华南联合大学',
+    '1953 广州教育学院创办',
+    '1958 广州师范学院创办',
+    '1978 广州师范学院复办',
+    '1983 获硕士学位授予权',
+    '1983 原广州大学复办',
+    '1984 华南建设学院（西院）',
+    '1985 广州高等师范专科学校',
+    '1993 接续 1927 年文脉',
+    '2000.7 五校合并组建',
+    '校训合成：博学笃行、与时俱进',
+    '2005 主体迁入大学城',
+    '2006 增列为博士学位授予单位',
+    '2016 全面实施高水平大学建设',
+    '2017 入选广东省冲一流计划',
+    '2018.11 工程学进入 ESI 前 1%',
+    'ESI 前 1% 学科增至 13 个',
+    '工程学进入 ESI 全球前 0.5‰',
+    '计算机科学等 4 学科进入前 2‰',
+    '6 个学科进入 U.S.News 世界百强',
+    '网络空间安全、土木工程享誉海内外',
+    '「2+5」学科与科研创新平台',
+    '2020 合并组建 20 周年',
+    '2027 建校 100 周年',
+    '百年校庆公告（第一号）已发布',
+    '博学笃行 · 与时俱进'
+  ];
+
+  var FLY_N = 16;
+  var flyingText = [];
+
+  (function buildFlyingText() {
+    var CW = 1024, CH = 128;
+
+    function paint(item, text) {
+      var g = item.ctx;
+      g.clearRect(0, 0, CW, CH);
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.font = '700 62px ' + FONT;
+      // 冷白字 + 淡蓝辉光，比主线那种金字低调
+      g.shadowColor = 'rgba(120,170,255,.75)';
+      g.shadowBlur = 26;
+      g.fillStyle = 'rgba(226,236,255,.92)';
+      g.fillText(text, CW / 2, CH / 2);
+      item.tex.needsUpdate = true;
+    }
+
+    function placeFly(it) {
+      var ang = Math.random() * Math.PI * 2;
+      var rad = 42 + Math.random() * 170;     // 避开正中，别挡住火箭
+      it.sprite.position.set(
+        Math.cos(ang) * rad,
+        SPACE_Y + Math.sin(ang) * rad * 0.66,
+        -(Math.random() * CORRIDOR)
+      );
+      var s = 22 + Math.random() * 30;
+      it.sprite.scale.set(s, s * (CH / CW), 1);
+      it.sprite.material.opacity = 0.22 + Math.random() * 0.20;
+    }
+
+    for (var i = 0; i < FLY_N; i++) {
+      var cv = document.createElement('canvas');
+      cv.width = CW;
+      cv.height = CH;
+      var ctx = cv.getContext('2d');
+      var tex = new THREE.CanvasTexture(cv);
+      tex.encoding = THREE.sRGBEncoding;
+      tex.anisotropy = 4;
+
+      var mat = new THREE.SpriteMaterial({
+        map: tex, transparent: true, opacity: 0.3,
+        depthWrite: false, fog: false, blending: THREE.AdditiveBlending
+      });
+      var sp = new THREE.Sprite(mat);
+      sp.renderOrder = 12;
+      scene.add(sp);
+
+      var item = { sprite: sp, ctx: ctx, tex: tex, fact: (i * 3) % FLY_FACTS.length };
+      paint(item, FLY_FACTS[item.fact]);
+      placeFly(item);
+      flyingText.push(item);
+    }
+
+    // 每帧回收：掠过身后就换一句、换个位置再来
+    window.__updateFlyingText = function (rz, visible) {
+      for (var j = 0; j < flyingText.length; j++) {
+        var f = flyingText[j];
+        f.sprite.visible = visible;
+        if (!visible) continue;
+        if (f.sprite.position.z > rz + 40) {
+          f.fact = (f.fact + 7) % FLY_FACTS.length;
+          paint(f, FLY_FACTS[f.fact]);
+          placeFly(f);
+        }
+      }
+    };
+  })();
 
   /* ============================================================
      状态
      ============================================================ */
   var state = {
+    // 动画时钟（毫秒）。**不是** performance.now() 的差值 ——
+    // 见 tick() 里的说明：卡顿帧不能算进动画进度。
+    clock: 0,
     t0: 0,
     launched: false,
     arrived: false,
@@ -1587,7 +1796,7 @@
      火箭位置 / 姿态
      ============================================================ */
   function rocketState(now) {
-    var el = now - state.t0;
+    var el = state.clock;
     var asc = clamp((el - T.PRE) / T.ASCEND, 0, 1);
     var spaceT = Math.max(0, el - T.PRE - T.ASCEND);
     var pitch = smooth(spaceT / T.PITCH);
@@ -1610,7 +1819,7 @@
   }
 
   function updateRocket(now) {
-    var el = now - state.t0;
+    var el = state.clock;
     var st = rocketState(now);
 
     rocket.position.y = st.y;
@@ -1631,12 +1840,8 @@
       thrust = st.asc < 1 ? 1.0 : 0.68;
     }
 
-    var flick = 0.9 + Math.sin(now * 0.045) * 0.07 + Math.sin(now * 0.13) * 0.03;
-    flameGroup.visible = ign > 0.02;
-    var w = (0.55 + ign * 0.45) * flick;
-    flameGroup.scale.set(w, thrust * flick * (0.35 + ign * 0.65), w);
-
-
+    // 三层不同频率的正弦叠出「不规则抖动」——
+    // 单一正弦看起来像呼吸，不像火焰。
     // ---- 「镜头是否正对着喷口」的衰减 ----
     //
     // 火箭侧倾时喷口会扫向镜头。一旦正对，就会「看进」锥体内部：
@@ -1647,10 +1852,39 @@
     var nozWorld = flameGroup.getWorldPosition(new THREE.Vector3());
     var toCam = camera.position.clone().sub(nozWorld).normalize();
     var facing = nozDir.dot(toCam);                      // 1 = 正对喷口
-    var plumeFade = Math.max(0, Math.min(1, (0.6 - facing) / 0.5));
+    // 阈值放宽到 0.82：之前 0.6 就开始淡，侧面看尾焰都发虚。
+    var plumeFade = Math.max(0, Math.min(1, (0.82 - facing) / 0.42));
 
-    flameInner.material.opacity = (0.10 + ign * 0.32) * plumeFade;
-    flameOuter.material.opacity = ign * 0.30 * plumeFade;
+    var f1 = Math.sin(now * 0.0210);
+    var f2 = Math.sin(now * 0.0573 + 1.3);
+    var f3 = Math.sin(now * 0.1130 + 2.7);
+    var flick = 0.86 + f1 * 0.09 + f2 * 0.07 + f3 * 0.05;
+
+    flameGroup.visible = ign > 0.02;
+    var w = (0.55 + ign * 0.45) * flick;
+    // 长度抖动比粗细更明显 —— 火焰是「窜」的
+    var flen = thrust * (0.35 + ign * 0.65) * (0.82 + f1 * 0.13 + f3 * 0.08);
+    flameGroup.scale.set(w, flen, w);
+
+    // 整束火焰绕轴轻微摆动，避免像一根固定的锥子
+    flameGroup.rotation.z = f2 * 0.035;
+    flameGroup.rotation.x = f3 * 0.025;
+
+    // 冲击钻石：亮度脉动 + 沿轴线来回窜
+    for (var sd = 0; sd < shockDiamonds.length; sd++) {
+      var sdp = shockDiamonds[sd];
+      var sdPhase = now * 0.006 - sd * 1.15;
+      var pulse = 0.55 + 0.45 * Math.sin(sdPhase);
+      sdp.material.opacity = ign * (0.30 + 0.55 * pulse) * plumeFade;
+      sdp.position.y = -1.0 - sd * 1.35 + Math.sin(sdPhase * 1.7) * 0.16;
+      var sc2 = (1.15 - sd * 0.2) * (0.85 + 0.28 * pulse);
+      sdp.scale.set(sc2, sc2 * 0.72, 1);
+    }
+
+
+
+    flameInner.material.opacity = (0.30 + ign * 0.62) * plumeFade;
+    flameOuter.material.opacity = ign * 0.55 * plumeFade;
 
     // 喷管内壁发光
     if (rocket.userData.bellInner) {
@@ -1707,14 +1941,14 @@
   var tmpV = new THREE.Vector3();
 
   function updateCamera(now, st, snap) {
-    var el = now - state.t0;
+    var el = state.clock;
     // 进入太空段（侧倾开始）后才允许拖动环视
     orbit.enabled = !state.arrived && st.asc >= 1;
     var px, py, pz, lx, ly, lz;
 
     // --- 冲刺阶段：镜头冲向星球 ---
     if (state.arrived) {
-      var g = clamp((now - state.arriveAt) / T.GLIDE, 0, 1);
+      var g = clamp((state.clock - state.arriveAt) / T.GLIDE, 0, 1);
       var e = easeIn(g);
       var from = state.glideFrom;
       var p = planetGroup.position;
@@ -1846,7 +2080,7 @@
 
     // 冲刺时星球放大（模拟逼近）
     if (state.arrived) {
-      var g = clamp((now - state.arriveAt) / T.GLIDE, 0, 1);
+      var g = clamp((state.clock - state.arriveAt) / T.GLIDE, 0, 1);
       planetGroup.scale.setScalar(1 + easeIn(g) * 0.9);
 
         // 火箭跟着镜头一起冲向星球，摆在右前方，机头始终指向星球。
@@ -1900,9 +2134,57 @@
   /* ============================================================
      主循环
      ============================================================ */
+  /* ------------------------------------------------------------
+     预热（warm-up）
+
+     第一帧要编译全部着色器、上传纹理。实测在无头环境里，
+     第一帧 2.4 秒、第二帧 5.6 秒 —— 光靠「固定预热 3 帧」根本挡不住，
+     因为每上一批新对象就再编译一次。这几秒要是被算进动画进度，
+     一开场就直接跳到「升空完成」，倒计时、校史、按钮全乱。
+
+     所以改成**自适应**：一直只渲染、不推进动画，
+     直到某一帧的耗时跌到正常水平（< 120ms），才把 t0 定下来开始计时。
+     硬件快的一两帧就过，慢的会自动多等几帧。
+     ------------------------------------------------------------ */
+  var warmDone = false;
+  var frameLast = 0;
+  var clockFrozen = false;   // 调试用：冻结动画时钟，方便截图对比
+  var warmFrames = 0;
+  var warmLast = 0;
+  var WARM_FAST_MS = 120;    // 一帧低于这个就算预热完了
+  var WARM_MAX = 30;         // 保险：最多等 30 帧，别卡死
+
   function tick() {
     RAF = requestAnimationFrame(tick);
     var now = performance.now();
+
+    if (!warmDone) {
+      try { renderer.render(scene, camera); } catch (e) {}
+      var frameMs = warmLast ? (now - warmLast) : 0;
+      warmLast = now;
+      warmFrames++;
+      // 第一帧没有上一帧可比，frameMs=0，会立刻达标 —— 所以要求至少跑 2 帧
+      if (warmFrames >= 2 && (frameMs < WARM_FAST_MS || warmFrames >= WARM_MAX)) {
+        warmDone = true;
+        state.clock = 0;
+        lastCd = null;
+      }
+      return;
+    }
+
+    /* ------------------------------------------------------------
+       动画时钟：**只按被限制的帧间隔累加**，不用 now - t0。
+
+       为什么：第一帧要编译大量着色器，实测单帧能到 2~9 秒。
+       如果用墙钟差值，那一帧过去 el 就直接跳 9 秒，
+       动画一开场就跳到「升空完成」—— 倒计时、校史、按钮全乱。
+
+       这里把单帧封顶在 100ms：卡顿只让动画「慢一点」，
+       不会把它甩到后面去。硬件快的机器完全无感。
+       ------------------------------------------------------------ */
+    var dtRaw = frameLast ? (now - frameLast) : 16;
+    frameLast = now;
+    if (!clockFrozen) state.clock += Math.min(dtRaw, 100);
     // 帧间隔（封顶 1/20 秒：切后台回来时不会一帧跳太远）
     var dt = trail._last2 ? Math.min(0.05, now / 1000 - trail._last2) : 0.016;
     trail._last2 = now / 1000;
@@ -1933,13 +2215,17 @@
 
   var HISTORY = [
     { y: '1927', t: '私立广州大学创立', d: '陈炳权先生创办，定校训「博学笃行」' },
-    { y: '1944', t: '弦歌不辍', d: '抗战期间几经迁徙；全校师生为抗日捐献战斗机' },
-    { y: '1953–1985', t: '五校并起', d: '广州教育学院、广州师范学院等市属高校相继创办' },
+    { y: '1944', t: '弦歌不辍', d: '抗战期间七度迁徙仍办学不辍；全校师生为抗日捐献战斗机' },
+    { y: '1953–1985', t: '五校并起', d: '广州教育学院、广州师范学院等五所市属高校相继创办' },
     { y: '2000', t: '五校合并', d: '组建新的广州大学，校训合成「博学笃行、与时俱进」' },
     { y: '2005', t: '迁入大学城', d: '办学空间与硬件条件得到根本性改善' },
     { y: '2006', t: '博士授予权', d: '被增列为博士学位授予单位，办学层次跃升' },
-    { y: '2017 至今', t: '高水平大学建设', d: '入选广东省「冲一流、补短板、强特色」提升计划' }
+    { y: '2018', t: '工程学破零', d: '工程学首次进入 ESI 全球前 1%，实现零的突破' },
+    // 终章单独标记：它不是一个「年份节点」，而是整条线的收束，
+    // 画的时候给它不同的排场（见 drawHistoryTexture 里的 finale 分支）。
+    { y: '2027', t: '建校一百周年', d: '从 1927 到今天，百年学府迎来百年校庆', finale: true }
   ];
+
 
   /* ============================================================
      校史文字：直接画在 3D 星空里，而不是网页上的一张卡片
@@ -2036,6 +2322,66 @@
     g.shadowBlur = 16;
     g.fillText('广 州 大 学 校 史', CX, 76);
     g.restore();
+
+    // ---- 终章（2027 百年校庆）单独排版 ----
+    // 它不是一个「年份节点」，而是整条线的收束，所以要给不同的排场：
+    // 上下加更宽的金线、标出 1927—2027 的跨度、字号更大、底部加一行祝词。
+    if (item.finale) {
+      rule(34, 340, 0.75);
+      diamond(CX - 348, 34, 7, 'rgba(254,206,14,.95)');
+      diamond(CX + 348, 34, 7, 'rgba(254,206,14,.95)');
+
+      g.save();
+      g.font = '700 34px ' + FONT;
+      g.fillStyle = 'rgba(180,200,255,.8)';
+      g.shadowColor = 'rgba(90,140,255,.9)';
+      g.shadowBlur = 20;
+      g.fillText('1927  —  2027', CX, 78);
+      g.restore();
+
+      g.save();
+      var fg = g.createLinearGradient(0, 110, 0, 250);
+      fg.addColorStop(0, '#fffbe0');
+      fg.addColorStop(0.4, '#ffd83a');
+      fg.addColorStop(1, '#e08a00');
+      g.font = '900 176px ' + FONT;
+      g.shadowColor = 'rgba(255,196,32,.95)';
+      g.shadowBlur = 92;
+      g.fillStyle = fg;
+      g.fillText(item.y, CX, 178);
+      g.shadowBlur = 0;
+      g.fillText(item.y, CX, 178);
+      g.restore();
+
+      g.save();
+      g.font = '900 78px ' + FONT;
+      g.shadowColor = 'rgba(255,190,60,.8)';
+      g.shadowBlur = 40;
+      g.fillStyle = '#fff6d0';
+      g.fillText(item.t, CX, 284);
+      g.restore();
+
+      g.save();
+      g.font = '600 36px ' + FONT;
+      g.shadowColor = 'rgba(0,0,0,.95)';
+      g.shadowBlur = 20;
+      g.fillStyle = 'rgba(226,234,255,.88)';
+      wrapText(g, item.d, CX, 350, W - 150, 48);
+      g.restore();
+
+      rule(410, 210, 0.5);
+      g.save();
+      g.font = '700 26px ' + FONT;
+      g.fillStyle = 'rgba(254,206,14,.85)';
+      g.fillText('百 年 学 府 · 与 城 同 长', CX, 440);
+      g.restore();
+
+      // 终章不用进度点，换成一条收束线
+      rule(468, 120, 0.28);
+
+      histTex.needsUpdate = true;
+      return;
+    }
 
     // ---- 年份：竖向渐变金 + 双层辉光 ----
     g.save();
@@ -2135,7 +2481,7 @@
   var lastCd = null;
 
   function updateOverlay(now) {
-    var el = now - state.t0;
+    var el = state.clock;
 
     // --- 倒计时 ---
     if (el < T.PRE) {
@@ -2174,15 +2520,18 @@
       }
     }
 
-    // 校史全部放完就出按钮。
+    // ① 升空一完成就露出角落按钮 —— 想快点走的人不用等校史
+    if (el >= T.PRE + T.ASCEND + 300) revealGoBtn();
+
+    // ② 校史全部讲完，按钮飞到正中。
     // ⚠️ 用时间点判断，不要只在「翻到最后一张」那一刻触发 ——
     //    如果中途被快进/跳帧（比如 reduced-motion、调试钩子），
-    //    那个事件就永远等不到，按钮也就不出现。
-    if (el >= goRevealAt()) revealGoBtn();
+    //    那个事件就永远等不到。
+    if (el >= goRevealAt()) centerGoBtn();
 
     // --- 抵达收尾 ---
     if (state.arrived) {
-      var g = (now - state.arriveAt) / T.GLIDE;
+      var g = (state.clock - state.arriveAt) / T.GLIDE;
       if (g > 1.05) finishAndGo();
     }
   }
@@ -2195,13 +2544,32 @@
     histFloat = 0;
   }
 
+  /* 按钮分两步出现：
+       ① 升空完成 → 右下角一颗小胶囊，想快点走的人立刻可以点；
+       ② 主线索全部讲完 → 它飞到屏幕正中放大，作为「正式抵达」的收尾。
+     既不用等 30 秒才能走，又保留了叙事节奏。 */
   var goRevealed = false;
+  var goCentered = false;
+
   function revealGoBtn() {
     if (goRevealed) return;
     goRevealed = true;
     if (els.goBtn) {
       els.goBtn.hidden = false;
-      els.goBtn.classList.add('show');
+      els.goBtn.classList.add('corner');
+      // 下一帧再加 show，保证 transition 有起点
+      requestAnimationFrame(function () {
+        if (els.goBtn) els.goBtn.classList.add('show');
+      });
+    }
+  }
+
+  function centerGoBtn() {
+    if (goCentered || !goRevealed) return;
+    goCentered = true;
+    if (els.goBtn) {
+      els.goBtn.classList.remove('corner');
+      els.goBtn.classList.add('center', 'show');
     }
     if (els.hint) els.hint.textContent = '奶龙号已抵达广州大学星';
   }
@@ -2210,7 +2578,7 @@
   function depart() {
     if (state.arrived) return;
     state.arrived = true;
-    state.arriveAt = performance.now();
+    state.arriveAt = state.clock;
     // 记住点击瞬间的机位，冲刺插值从这里开始
     state.glideFrom = { x: camera.position.x, y: camera.position.y, z: camera.position.z };
 
@@ -2281,12 +2649,12 @@
      ============================================================ */
   function start() {
     resize();
-    state.t0 = performance.now();
-    lastCd = null;
+    // 时钟不在这里起算 —— tick() 会先跑几帧预热（编译着色器），
+    // 预热结束才开始计时。否则首帧耗时会被算进动画进度。
 
     if (els.dots && !els.dots.children.length) {
       for (var i = 0; i < HISTORY.length; i++) {
-        els.dots.appendChild(document.createElement('i'));
+        els.dots.appendChild(document.createElement("i"));
       }
     }
 
@@ -2296,7 +2664,7 @@
     updateCamera(now, st, true);
     updateRocket(now);
 
-    if (els.goBtn) els.goBtn.addEventListener('click', depart);
+    if (els.goBtn) els.goBtn.addEventListener("click", depart);
 
     tick();
     window.__launchReady = true;
@@ -2308,7 +2676,7 @@
   window.__dbg = {
     scene: scene, camera: camera, rocket: rocket, flameGroup: flameGroup,
     embers: embers, planetGroup: planetGroup, earth: earth, padGroup: padGroup,
-    trail: trail,
+    trail: trail, state: state,
     trailAlive: function () {
       var n = 0;
       for (var i = 0; i < trail.n; i++) if (trail.age[i] >= 0) n++;
@@ -2318,8 +2686,21 @@
 
   // 调试用：把动画时间跳到指定毫秒（截图验收时精确抓某一帧）。
   // 平时不会被调用，留着也不影响线上。
+  // 调试用：冻结/解冻动画时钟（截图时用，线上不会调用）
+  window.__freezeClock = function (on) { clockFrozen = !!on; };
+
   window.__setLaunchTime = function (ms) {
-    state.t0 = performance.now() - ms;
+    // 跳过预热，让调试跳转立刻生效
+    warmDone = true;
+    state.clock = ms;
+    // 同时把按钮打回初始态：否则上一次跑到后面留下的「已出现」状态会带过来，
+    // 截图就对不上了。
+    goRevealed = false;
+    goCentered = false;
+    if (els.goBtn) {
+      els.goBtn.hidden = true;
+      els.goBtn.classList.remove('corner', 'center', 'show', 'gone');
+    }
     // 校史也要跟着回到对应进度
     var started = ms >= (T.PRE + T.ASCEND * 0.45);
     if (started) {
