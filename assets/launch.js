@@ -2763,7 +2763,8 @@
       els.hint.textContent = '已暂停 · 按空格继续';
     } else if (els.hint && els.hint.textContent.indexOf('飞往') < 0 &&
                els.hint.textContent.indexOf('已暂停') < 0 &&
-               els.hint.textContent.indexOf('已跳到') < 0) {
+               els.hint.textContent.indexOf('已跳到') < 0 &&
+               els.hint.textContent.indexOf('已讲完') < 0) {
       els.hint.textContent = '奶龙号正在飞往广州大学星…';
     }
 
@@ -2835,7 +2836,23 @@
   function advanceHistory() {
     if (state.arrived) return;
     var next = state.historyIdx + 1;
-    if (next >= HISTORY.length) { depart(); return; }
+
+    /* 已经在最后一节：点屏幕**不再**直接跳转。
+       抵达是一个有仪式感的收尾，应该由用户明确点「出发」来触发，
+       而不是在翻完最后一页时被顺手带出去。
+       这里只做两件事：把按钮短暂强调一下，并把提示改成指路。 */
+    if (next >= HISTORY.length) {
+      if (els.goBtn) {
+        els.goBtn.classList.add('nudge');
+        setTimeout(function () {
+          if (els.goBtn) els.goBtn.classList.remove('nudge');
+        }, 900);
+      }
+      if (els.hint) {
+        els.hint.textContent = '已讲完 · 点击「出发，前往广州大学星」继续';
+      }
+      return;
+    }
 
     var target = historyStartAt() + T.HISTORY_GAP * next + 1;
 
