@@ -3209,6 +3209,26 @@
 
   var lastCd = null;
 
+  /* 提示文案占位
+
+     #hint 是每帧由 updateOverlay 覆盖写的，所以交互写入的临时文案
+     （「已跳到下一节」「已回到上一节」）会被下一帧立刻冲掉。
+
+     原来用「字符串白名单」绕：判断当前文本里有没有「已跳到」「已讲完」……
+     但每加一条新文案就得记得往白名单里补一句，很容易漏 ——
+     「已回到上一节」就是这么被吃掉的。
+
+     改成时间戳占位：写入时记一个截止时间，到点之前 updateOverlay
+     不覆盖。新文案不用改任何白名单，传 Infinity 就是永久占位。 */
+  var hintHoldUntil = 0;
+
+  function setHint(text, holdMs) {
+    if (!els.hint) return;
+    els.hint.textContent = text;
+    hintHoldUntil = performance.now() +
+      (holdMs === undefined ? 2600 : holdMs);
+  }
+
   function updateOverlay(now) {
     var el = state.clock;
 
@@ -3228,13 +3248,11 @@
       return;
     }
     if (els.countdown && !els.countdown.hidden) els.countdown.hidden = true;
-    // 暂停时不要每帧把提示改回去，否则「已暂停」一闪就没了
+    // 提示文案：暂停态优先；否则等占位时间过了才恢复默认文案。
+    // 不再用字符串白名单 —— 那玩意儿每加一句文案就要改一次，必漏。
     if (state.paused && els.hint) {
       els.hint.textContent = '已暂停 · 点中间的按钮继续';
-    } else if (els.hint && els.hint.textContent.indexOf('飞往') < 0 &&
-               els.hint.textContent.indexOf('已暂停') < 0 &&
-               els.hint.textContent.indexOf('已跳到') < 0 &&
-               els.hint.textContent.indexOf('已讲完') < 0) {
+    } else if (els.hint && performance.now() > hintHoldUntil) {
       els.hint.textContent = '奶龙号正在飞往广州大学星…';
     }
 
@@ -3362,9 +3380,7 @@
           if (els.goBtn) els.goBtn.classList.remove('nudge');
         }, 900);
       }
-      if (els.hint) {
-        els.hint.textContent = '已讲完 · 点击「出发，前往广州大学星」继续';
-      }
+      setHint('已讲完 · 点击「出发，前往广州大学星」继续', Infinity);
       return;
     }
 
@@ -3380,7 +3396,7 @@
     // （历史教训：曾经为了修「跳完又被自动翻页」把这里改成墙钟，
     //   结果引入「暂停无效」；根因是时间源不统一，不是选哪个的问题。）
     state.historyShownAt = state.clock;
-    if (els.hint) els.hint.textContent = '已跳到下一节 · 再次轻点可继续';
+    setHint('已跳到下一节 · 用下方按钮翻页', 2600);
   }
 
   /* 回到上一节校史。
@@ -3404,7 +3420,7 @@
     // （历史教训：曾经为了修「跳完又被自动翻页」把这里改成墙钟，
     //   结果引入「暂停无效」；根因是时间源不统一，不是选哪个的问题。）
     state.historyShownAt = state.clock;
-    if (els.hint) els.hint.textContent = '已回到上一节 · 轻点屏幕可继续';
+    setHint('已回到上一节 · 用下方按钮翻页', 2600);
   }
 
   function revealGoBtn() {
@@ -3427,7 +3443,7 @@
       els.goBtn.classList.remove('corner');
       els.goBtn.classList.add('center', 'show');
     }
-    if (els.hint) els.hint.textContent = '奶龙号已抵达广州大学星';
+    setHint('奶龙号已抵达广州大学星', Infinity);
   }
 
   /* ---------- 点击「出发」 ---------- */
