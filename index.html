@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
 <head>
 <meta name="baidu-site-verification" content="codeva-4BVXCTJLWq" />
@@ -188,6 +188,16 @@
   }
   .hint.gone { opacity: 0; }
 
+  /* 环视提示：太空段出现几秒后自动淡出，别一直占着屏幕 */
+  .hint-orbit {
+    font-size: clamp(11px, 3.1vw, 12.5px);
+    color: rgba(238, 241, 255, .42);
+    letter-spacing: .08em;
+    transition: opacity 1.2s;
+  }
+  .hint-orbit[hidden] { display: none; }
+  .hint-orbit.out { opacity: 0; }
+
   /* ---------- 三个原有按钮 ---------- */
   .gh-btn {
     position: fixed; left: max(10px, env(safe-area-inset-left)); bottom: max(10px, env(safe-area-inset-bottom));
@@ -332,6 +342,8 @@
     <!-- 校史不再是网页卡片 —— 它现在是画在 3D 星空里的发光文字
          （见 assets/launch.js 的 histSprite）。这里只留状态提示。 -->
     <p class="hint" id="hint">奶龙号正在飞往广州大学星…</p>
+    <!-- 进入太空后提示可以拖动环视，几秒后自动淡出 -->
+    <p class="hint hint-orbit" id="hint-orbit" hidden>拖动屏幕可以环视 · 松手会慢慢回正</p>
   </div>
 
   <!-- 没有 WebGL 时的静态兜底 -->
@@ -384,6 +396,9 @@
 
 <!-- Three.js：本地 vendor，不走 CDN（中文网络下 CDN 经常连不上） -->
 <script src="assets/three.min.js"></script>
+<!-- 内联贴图（data URI）。必须排在 launch.js 之前：
+     它让奶龙舷窗和校徽在 file:// 双击打开时也能显示。 -->
+<script src="assets/textures.js"></script>
 <!-- 3D 发射场景 -->
 <script src="assets/launch.js"></script>
 <script>

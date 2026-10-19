@@ -36,7 +36,7 @@
     ASCEND: 7000,      // 升空到大气层外
     PITCH: 2400,       // 太空中侧倾转向
     HISTORY_GAP: 3800, // 校史卡片自动切换间隔
-    GLIDE: 2800        // 点击后冲向星球
+    GLIDE: 4600        // 点击后冲向星球
   };
 
   var SPACE_Y = 200;      // 太空巡航高度
@@ -419,6 +419,10 @@
     var RT = 1.38;        // 箭体顶部半径
     var RB = 1.74;        // 箭体底部半径
     var NOSE_H = 3.0;     // 头锥高度
+    // 圆周分段数。72 段完全看不出棱；16 段每个面约 22°，
+    // 配合 flatShading 就能读出明确的切面 —— 这是「棱角」的关键。
+    var SEG = 16;
+    var NOSE_SEG = 24;    // 头锥给多一点面：16 段太像宝石，24 段刚好有棱但不碎
     var YTOP = Y0 + BH;   // 箭体顶面
 
     // 任意高度处的箭体半径（圆柱是锥形的，贴花半径得按这个算）
@@ -426,15 +430,18 @@
       return RB + (RT - RB) * (y - Y0) / BH;
     }
 
+    // flatShading：每个三角面单独算法线，面与面之间出现明确的明暗断层 ——
+    // 这就是「棱角」的来源。配合下面减少的面数，箭体变成有切面的硬表面，
+    // 而不是一个塑料感的圆筒。
     var white = new THREE.MeshStandardMaterial({
-      color: 0xdfe4f2, roughness: 0.34, metalness: 0.28
+      color: 0xdfe4f2, roughness: 0.34, metalness: 0.28, flatShading: true
     });
     var gold = new THREE.MeshStandardMaterial({
-      color: 0xfece0e, roughness: 0.28, metalness: 0.62,
+      color: 0xfece0e, roughness: 0.28, metalness: 0.62, flatShading: true,
       emissive: 0x3a2c00, emissiveIntensity: 0.35
     });
     var dark = new THREE.MeshStandardMaterial({
-      color: 0x1c2236, roughness: 0.42, metalness: 0.85
+      color: 0x1c2236, roughness: 0.42, metalness: 0.85, flatShading: true
     });
 
     // ---- 箭体 ----
@@ -476,20 +483,21 @@
     });
 
     var bodyMat = new THREE.MeshStandardMaterial({
-      map: bodyTex, color: 0xffffff, roughness: 0.38, metalness: 0.30
+      map: bodyTex, color: 0xffffff, roughness: 0.38, metalness: 0.30,
+      flatShading: true
     });
-    var body = new THREE.Mesh(new THREE.CylinderGeometry(RT, RB, BH, 72), bodyMat);
+    var body = new THREE.Mesh(new THREE.CylinderGeometry(RT, RB, BH, SEG), bodyMat);
     body.position.y = Y0 + BH / 2;
     rocket.add(body);
 
     // ---- 头锥 ----
-    var nose = new THREE.Mesh(new THREE.ConeGeometry(RT, NOSE_H, 72), gold);
+    var nose = new THREE.Mesh(new THREE.ConeGeometry(RT, NOSE_H, NOSE_SEG), gold);
     nose.position.y = YTOP + NOSE_H / 2;
     rocket.add(nose);
 
     // 头锥根的过渡环（收口，不然圆锥和圆柱直接撞在一起很生硬）
     var collar = new THREE.Mesh(
-      new THREE.CylinderGeometry(RT + 0.05, RT + 0.05, 0.24, 72), gold
+      new THREE.CylinderGeometry(RT + 0.05, RT + 0.05, 0.24, SEG), gold
     );
     collar.position.y = YTOP;
     rocket.add(collar);
@@ -512,7 +520,7 @@
     for (var b = 0; b < 2; b++) {
       var byy = Y0 + BH * (0.075 + b * 0.70);
       var band = new THREE.Mesh(
-        new THREE.CylinderGeometry(radiusAt(byy) + 0.03, radiusAt(byy) + 0.03, 0.1, 72), gold
+        new THREE.CylinderGeometry(radiusAt(byy) + 0.03, radiusAt(byy) + 0.03, 0.1, SEG), gold
       );
       band.position.y = byy;
       rocket.add(band);
@@ -521,13 +529,13 @@
     // ---- 级间段（二级火箭的分段位置）----
     var yi = Y0 + BH * 0.855;
     var interstage = new THREE.Mesh(
-      new THREE.CylinderGeometry(radiusAt(yi) + 0.05, radiusAt(yi) + 0.09, 0.34, 72), dark
+      new THREE.CylinderGeometry(radiusAt(yi) + 0.05, radiusAt(yi) + 0.09, 0.34, SEG), dark
     );
     interstage.position.y = yi;
     rocket.add(interstage);
 
     var interstageRing = new THREE.Mesh(
-      new THREE.TorusGeometry(radiusAt(yi) + 0.07, 0.055, 8, 72), gold
+      new THREE.TorusGeometry(radiusAt(yi) + 0.07, 0.055, 6, SEG), gold
     );
     interstageRing.rotation.x = Math.PI / 2;
     interstageRing.position.y = yi + 0.17;
@@ -565,14 +573,14 @@
 
     // ---- 尾喷管 ----
     var bell = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.02, 1.62, 1.25, 48, 1, true), dark
+      new THREE.CylinderGeometry(1.02, 1.62, 1.25, SEG, 1, true), dark
     );
     bell.position.y = 0.16;
     bell.material.side = THREE.DoubleSide;
     rocket.add(bell);
 
     var bellInner = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.72, 1.25, 1.2, 40, 1, true),
+      new THREE.CylinderGeometry(0.72, 1.25, 1.2, SEG, 1, true),
       new THREE.MeshBasicMaterial({
         color: 0xffb45c, transparent: true, opacity: 0, fog: false,
         side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false
@@ -593,6 +601,59 @@
       strut.rotation.z = Math.cos(sa) * 0.22;
       strut.rotation.x = -Math.sin(sa) * 0.22;
       rocket.add(strut);
+    }
+
+    // ---- 发动机管线 ----
+    // 真实火箭的喷管周围全是管路，一个光溜溜的锥形喷口会很假。
+    // 这里做：一圈环形总管 + 4 根主燃料管（从箭体底部绕到喉部）+ 喷管加强筋。
+    var plumbMat = new THREE.MeshStandardMaterial({
+      color: 0xa9b3cc, roughness: 0.32, metalness: 0.92, flatShading: true
+    });
+
+    // 环形总管
+    var manifold = new THREE.Mesh(
+      new THREE.TorusGeometry(1.18, 0.075, 6, 24), plumbMat
+    );
+    manifold.rotation.x = Math.PI / 2;
+    manifold.position.y = 1.02;
+    rocket.add(manifold);
+
+    // 4 根主燃料管：从箭体底部（半径大）向下绕到喷管喉部（半径小）
+    for (var pi = 0; pi < 4; pi++) {
+      var pa = (pi / 4) * Math.PI * 2 + Math.PI / 4;
+      var px1 = Math.cos(pa), pz1 = Math.sin(pa);
+      var curve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(px1 * 0.86, 1.86, pz1 * 0.86),
+        new THREE.Vector3(px1 * 1.26, 1.34, pz1 * 1.26),
+        new THREE.Vector3(px1 * 1.20, 1.00, pz1 * 1.20),
+        new THREE.Vector3(px1 * 0.99, 0.66, pz1 * 0.99)
+      ]);
+      var tube = new THREE.Mesh(
+        new THREE.TubeGeometry(curve, 20, 0.058, 6, false), plumbMat
+      );
+      rocket.add(tube);
+
+      // 每根管子在总管附近加一个小法兰（一圈小圆盘）
+      var flange = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.115, 0.115, 0.05, 8), plumbMat
+      );
+      flange.position.set(px1 * 1.22, 1.12, pz1 * 1.22);
+      rocket.add(flange);
+    }
+
+    // 喷管加强筋：竖着贴在锥面上的细条，让喷口不再是光滑的喇叭
+    var ribMat = new THREE.MeshStandardMaterial({
+      color: 0x39415c, roughness: 0.5, metalness: 0.8, flatShading: true
+    });
+    for (var ri = 0; ri < 8; ri++) {
+      var ra2 = (ri / 8) * Math.PI * 2;
+      var rib = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.1, 0.1), ribMat);
+      // 贴在喷管外壁：高度 0.16 处半径约 1.3，向下半径变大
+      rib.position.set(Math.cos(ra2) * 1.32, 0.16, Math.sin(ra2) * 1.32);
+      rib.rotation.y = -ra2;
+      rib.rotation.z = Math.cos(ra2) * 0.12;
+      rib.rotation.x = -Math.sin(ra2) * 0.12;
+      rocket.add(rib);
     }
 
     // ---- 尾翼：3 片后掠梯形 ----
@@ -639,7 +700,11 @@
     winBarrel.position.z = 0.15;
     winGroup.add(winBarrel);
 
-    var winTex = new THREE.TextureLoader().load('core.webp');
+    // 优先用内联的 data URI（见 assets/textures.js）。
+    // 直接用 'core.webp' 的话，file:// 双击打开时 WebGL 会拒绝这张跨源贴图，
+    // 舷窗就变成一片空白 —— 而程序画的「奶龙号」却正常，很容易误判成模型问题。
+    var NAILONG_SRC = (window.__TEX && window.__TEX.naiLong) || 'core.webp';
+    var winTex = new THREE.TextureLoader().load(NAILONG_SRC);
     winTex.encoding = THREE.sRGBEncoding;
 
     var winDisc = new THREE.Mesh(
@@ -752,7 +817,7 @@
     logoImg.onerror = function () {
       console.error('[logo] 校徽加载失败，检查 assets/gzhu-logo.png 是否存在');
     };
-    logoImg.src = 'assets/gzhu-logo.png';
+    logoImg.src = (window.__TEX && window.__TEX.gzhuLogo) || 'assets/gzhu-logo.png';
 
     // ---- 天线 + 顶端飞行灯 ----
     var antenna = new THREE.Mesh(
@@ -800,7 +865,7 @@
       var y = pos.getY(i);
       var tv = (y + height / 2) / height;   // 0 = 底面, 1 = 尖端
       // 底面满亮，尖端归零；再开个平方让衰减更柔和
-      var k = Math.pow(1 - tv, 2.3) * 0.42;
+      var k = Math.pow(1 - tv, 1.9) * 0.58;
       cols[i * 3] = c.r * k;
       cols[i * 3 + 1] = c.g * k;
       cols[i * 3 + 2] = c.b * k;
@@ -817,15 +882,15 @@
   }
 
   // 内焰：窄而亮
-  var flameInner = makePlume(0.66, 4.6, 0xfff2cc, 0.30);
+  var flameInner = makePlume(0.48, 3.6, 0xfff0c8, 0.30);
   flameInner.rotation.x = Math.PI;
-  flameInner.position.y = -2.4;
+  flameInner.position.y = -1.9;
   flameGroup.add(flameInner);
 
   // 外焰：宽而淡，带橙
-  var flameOuter = makePlume(1.42, 8.4, 0xff9422, 0.20);
+  var flameOuter = makePlume(1.15, 8.0, 0xff8a1e, 0.26);
   flameOuter.rotation.x = Math.PI;
-  flameOuter.position.y = -4.5;
+  flameOuter.position.y = -4.1;
   flameGroup.add(flameOuter);
 
   // 喷口辉光：一张永远面向相机的精灵。
@@ -1267,6 +1332,153 @@
   })();
 
   /* ============================================================
+     太空参照物
+
+     火箭在无边的黑里匀速飞，画面其实「不动」—— 没有任何东西可以对比。
+     要让前进感成立，必须有**留在世界坐标里**、被火箭甩到身后的东西：
+
+       · 碎石：几十块低模岩石，散在航道上，火箭从它们旁边掠过；
+       · 速度线：贴着相机的大量细长亮线，朝后飞，速度越快拉得越长。
+
+     两者都用「回收」的方式维持密度：飞出身后就挪到前方去，
+     不需要不停创建/销毁对象。
+     ============================================================ */
+  var CORRIDOR = 1100;      // 航道长度（回收时往后挪这么多）
+
+  var debrisGroup = new THREE.Group();
+  debrisGroup.frustumCulled = false;
+  scene.add(debrisGroup);
+
+  (function buildDebris() {
+    var N = 46;
+    var rockMat = new THREE.MeshStandardMaterial({
+      color: 0x6b7390, roughness: 0.95, metalness: 0.12
+    });
+    // 几种不同面数的低模，混着用，不会看出是同一个模型
+    var geos = [
+      new THREE.IcosahedronGeometry(1, 0),
+      new THREE.DodecahedronGeometry(1, 0),
+      new THREE.OctahedronGeometry(1, 1)
+    ];
+
+    for (var i = 0; i < N; i++) {
+      var g = geos[i % geos.length];
+      var m = new THREE.Mesh(g, rockMat);
+
+      // 大小差很多，近处的小、远处的大，透视上更有层次
+      var s = 0.7 + Math.random() * 4.2;
+      m.scale.set(s, s * (0.65 + Math.random() * 0.7), s * (0.7 + Math.random() * 0.6));
+
+      // 散布在航道周围：横向 160，纵向 120，避开正中（别糊在火箭脸上）
+      var ang = Math.random() * Math.PI * 2;
+      var rad = 26 + Math.random() * 150;
+      m.position.set(
+        Math.cos(ang) * rad,
+        SPACE_Y + Math.sin(ang) * rad * 0.62,
+        -Math.random() * CORRIDOR
+      );
+
+      m.rotation.set(Math.random() * 6.28, Math.random() * 6.28, Math.random() * 6.28);
+      m.userData.spin = {
+        x: (Math.random() - 0.5) * 0.5,
+        y: (Math.random() - 0.5) * 0.5,
+        z: (Math.random() - 0.5) * 0.5
+      };
+      debrisGroup.add(m);
+    }
+  })();
+
+  // 速度线：一堆沿 Z 方向的细线段
+  var speedLines = (function () {
+    var N = 160;
+    var pos = new Float32Array(N * 6);      // 每根线两个端点
+    var base = new Float32Array(N * 3);     // 每根线的中心（用来回收）
+    var len = new Float32Array(N);
+
+    for (var i = 0; i < N; i++) {
+      var ang = Math.random() * Math.PI * 2;
+      var rad = 12 + Math.random() * 130;
+      var cx = Math.cos(ang) * rad;
+      var cy = SPACE_Y + Math.sin(ang) * rad * 0.7;
+      var cz = -Math.random() * CORRIDOR;
+      var L = 8 + Math.random() * 42;
+
+      base[i * 3] = cx; base[i * 3 + 1] = cy; base[i * 3 + 2] = cz;
+      len[i] = L;
+
+      pos[i * 6]     = cx; pos[i * 6 + 1] = cy; pos[i * 6 + 2] = cz;
+      pos[i * 6 + 3] = cx; pos[i * 6 + 4] = cy; pos[i * 6 + 5] = cz - L;
+    }
+
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+
+    var mat = new THREE.LineBasicMaterial({
+      color: 0x9fc4ff,
+      transparent: true,
+      opacity: 0.5,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      fog: false
+    });
+
+    var lines = new THREE.LineSegments(geo, mat);
+    lines.frustumCulled = false;
+    scene.add(lines);
+    return { obj: lines, pos: pos, base: base, len: len, n: N, geo: geo };
+  })();
+
+  // 每帧回收：跑到火箭身后就挪回前方
+  function updateSpaceField(now, st, speed) {
+    var rz = rocket.position.z;
+
+    // ---- 碎石 ----
+    var kids = debrisGroup.children;
+    for (var i = 0; i < kids.length; i++) {
+      var d = kids[i];
+      if (d.position.z > rz + 70) {
+        d.position.z -= CORRIDOR;
+        // 换一个横向位置，免得每次都在同一条线上重复
+        var ang = Math.random() * Math.PI * 2;
+        var rad = 26 + Math.random() * 150;
+        d.position.x = Math.cos(ang) * rad;
+        d.position.y = SPACE_Y + Math.sin(ang) * rad * 0.62;
+      }
+      d.rotation.x += d.userData.spin.x * 0.016;
+      d.rotation.y += d.userData.spin.y * 0.016;
+      d.rotation.z += d.userData.spin.z * 0.016;
+      d.visible = st.asc >= 1;
+    }
+
+    // ---- 速度线 ----
+    var sp = speedLines;
+    var arr = sp.pos;
+    // 速度越快，线拉得越长（最低 1 倍，巡航时约 2.2 倍）
+    var stretch = 0.8 + speed * 0.045;
+
+    for (var k = 0; k < sp.n; k++) {
+      var cz = sp.base[k * 3 + 2];
+      if (cz > rz + 60) {
+        cz -= CORRIDOR;
+        sp.base[k * 3 + 2] = cz;
+        // 回收时也换个横向位置
+        var a2 = Math.random() * Math.PI * 2;
+        var r2 = 12 + Math.random() * 130;
+        sp.base[k * 3] = Math.cos(a2) * r2;
+        sp.base[k * 3 + 1] = SPACE_Y + Math.sin(a2) * r2 * 0.7;
+      }
+      var cx = sp.base[k * 3], cy = sp.base[k * 3 + 1];
+      var L = sp.len[k] * stretch;
+      arr[k * 6]     = cx; arr[k * 6 + 1] = cy; arr[k * 6 + 2] = cz;
+      arr[k * 6 + 3] = cx; arr[k * 6 + 4] = cy; arr[k * 6 + 5] = cz - L;
+    }
+    sp.geo.attributes.position.needsUpdate = true;
+
+    // 升空阶段还没进太空，藏起来
+    sp.obj.visible = st.asc >= 1;
+  }
+
+  /* ============================================================
      状态
      ============================================================ */
   var state = {
@@ -1279,6 +1491,94 @@
     historyShownAt: 0,
     done: false
   };
+
+  /* ============================================================
+     环视（拖动屏幕改变观察角度）
+
+     只在太空段生效。用户按住拖动 → 相机绕箭体转；松手后停一会儿
+     自动缓慢回到尾部跟随的默认机位。
+
+     ⚠️ 必须限位：不限的话能转到箭体正前方，会看到「倒着飞」，
+        而且镜头可能穿进模型里。
+     ============================================================ */
+  var orbit = {
+    yaw: 0, pitch: 0,             // 当前角度（平滑后的）
+    targetYaw: 0, targetPitch: 0, // 拖动直接改这个
+    dragging: false,
+    lastAt: 0,
+    enabled: false                // 进入太空段才允许拖
+  };
+
+  // 限位：左右各 68°，上下 -20°~+46°
+  var ORBIT_YAW_MAX = 1.19;
+  var ORBIT_PITCH_MIN = -0.35;
+  var ORBIT_PITCH_MAX = 0.80;
+  // 松手后多久开始回正
+  var ORBIT_IDLE_MS = 3200;
+
+  (function bindOrbit() {
+    var cv = canvas;
+    var lastX = 0, lastY = 0, pid = null;
+
+    function onDown(e) {
+      if (!orbit.enabled || state.arrived) return;
+      // 从按钮/弹窗上按下就别抢（它们在 canvas 之上，正常不会走到这里，
+      // 但 pointerdown 的 target 检查一下更稳）
+      if (e.target && e.target !== cv) return;
+      orbit.dragging = true;
+      pid = e.pointerId;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      orbit.lastAt = performance.now();
+      try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+
+    function onMove(e) {
+      if (!orbit.dragging || e.pointerId !== pid) return;
+      var dx = e.clientX - lastX;
+      var dy = e.clientY - lastY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+
+      // 0.0042 rad/px ≈ 每 100 像素转 24°，手感比较跟手
+      orbit.targetYaw = Math.max(-ORBIT_YAW_MAX,
+        Math.min(ORBIT_YAW_MAX, orbit.targetYaw - dx * 0.0042));
+      orbit.targetPitch = Math.max(ORBIT_PITCH_MIN,
+        Math.min(ORBIT_PITCH_MAX, orbit.targetPitch + dy * 0.0035));
+      orbit.lastAt = performance.now();
+    }
+
+    function onUp(e) {
+      if (e.pointerId !== pid) return;
+      orbit.dragging = false;
+      pid = null;
+      orbit.lastAt = performance.now();
+      try { cv.releasePointerCapture(e.pointerId); } catch (err) {}
+    }
+
+    cv.addEventListener('pointerdown', onDown);
+    cv.addEventListener('pointermove', onMove);
+    cv.addEventListener('pointerup', onUp);
+    cv.addEventListener('pointercancel', onUp);
+    // 手指拖的时候别让浏览器拿去滚页
+    cv.style.touchAction = 'none';
+  })();
+
+  // 每帧推进环视角度：跟手平滑 + 空闲后回正
+  function updateOrbit(dt, now) {
+    // 只有太空段能拖；升空/抵达到时候强制回正
+    if (!orbit.enabled || state.arrived) {
+      orbit.targetYaw += (0 - orbit.targetYaw) * Math.min(1, dt * 3);
+      orbit.targetPitch += (0 - orbit.targetPitch) * Math.min(1, dt * 3);
+    } else if (!orbit.dragging && now - orbit.lastAt > ORBIT_IDLE_MS) {
+      // 松手一段时间没动 → 缓慢回到尾部跟随机位
+      orbit.targetYaw += (0 - orbit.targetYaw) * Math.min(1, dt * 0.55);
+      orbit.targetPitch += (0 - orbit.targetPitch) * Math.min(1, dt * 0.55);
+    }
+    // 二级平滑，避免拖动时抖动
+    orbit.yaw += (orbit.targetYaw - orbit.yaw) * Math.min(1, dt * 9);
+    orbit.pitch += (orbit.targetPitch - orbit.pitch) * Math.min(1, dt * 9);
+  }
 
   var RAF = null;
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1349,8 +1649,8 @@
     var facing = nozDir.dot(toCam);                      // 1 = 正对喷口
     var plumeFade = Math.max(0, Math.min(1, (0.6 - facing) / 0.5));
 
-    flameInner.material.opacity = (0.10 + ign * 0.34) * plumeFade;
-    flameOuter.material.opacity = ign * 0.24 * plumeFade;
+    flameInner.material.opacity = (0.10 + ign * 0.32) * plumeFade;
+    flameOuter.material.opacity = ign * 0.30 * plumeFade;
 
     // 喷管内壁发光
     if (rocket.userData.bellInner) {
@@ -1359,8 +1659,8 @@
 
     // 喷口辉光（billboard）跟着点火强度走
     if (flameGroup.userData.glow) {
-      flameGroup.userData.glow.material.opacity = ign * (0.30 + 0.1 * flick) * (0.35 + 0.65 * plumeFade);
-      var gs = (0.5 + ign * 0.85) * (0.9 + 0.1 * flick);
+      flameGroup.userData.glow.material.opacity = ign * (0.46 + 0.12 * flick) * (0.35 + 0.65 * plumeFade);
+      var gs = (0.9 + ign * 1.35) * (0.9 + 0.1 * flick);
       flameGroup.userData.glow.scale.set(gs, gs, 1);
     }
 
@@ -1408,6 +1708,8 @@
 
   function updateCamera(now, st, snap) {
     var el = now - state.t0;
+    // 进入太空段（侧倾开始）后才允许拖动环视
+    orbit.enabled = !state.arrived && st.asc >= 1;
     var px, py, pz, lx, ly, lz;
 
     // --- 冲刺阶段：镜头冲向星球 ---
@@ -1451,20 +1753,28 @@
       // B 的收尾机位（asc = 1 时，和上面那组 lerp 的终值一致）
       var bX = 12, bY = SPACE_Y + 1.3 - 1.6, bZ = 16;
 
-      // C：箭体后上方 + 侧偏。
-      // ⚠️ 不要正对 -Z 后方：那样只能看到一个喷口圆盘，
-      //    偏到侧面才能看到箭体轮廓、尾翼和尾焰。
-      var cX = 18.5;
-      var cY = st.y + 3.8;
-      var cZ = st.z + 8.5;
+      // C：尾部跟随。基准机位在箭体正后方偏上，再用环视角度绕着箭体转。
+      //
+      // 基准 (0, 5, 22) 是「正后方」—— 用户要的是尾随视角。
+      // 想从侧面看箭体（奶龙号那面）就拖动屏幕，由 orbit 决定转多少。
+      // 轻微偏一点（约 12°），正对喷口的话画面里只有一个圆盘，很单调。
+      var off = new THREE.Vector3(4.2, 6.0, 20);
+      // 拖动产生的环视角度绕着箭体转这个偏移
+      off.applyEuler(new THREE.Euler(orbit.pitch, orbit.yaw, 0, 'YXZ'));
+
+      var cX = off.x;
+      var cY = st.y + off.y;
+      var cZ = st.z + off.z;
 
       px = lerp(bX, cX, m);
       py = lerp(bY, cY, m);
       pz = lerp(bZ, cZ, m);
 
-      lx = 0;
-      ly = lerp(SPACE_Y + 4.7, st.y + 6.5, m);
-      lz = lerp(0, st.z - 8, m);
+      // 注视点：箭体略偏前方。拖动时让注视点也跟着偏一点，
+      // 否则转到侧面后箭体会跑到画面边上。
+      lx = off.x * 0.22;
+      ly = lerp(SPACE_Y + 4.7, st.y + 2.6, m);
+      lz = lerp(0, st.z - 7, m);
     }
 
     // 平滑跟随（snap = true 时直接落位，用于首帧和还原）
@@ -1503,6 +1813,17 @@
       padGroup.userData.ring.material.opacity = 0.32 + Math.sin(now * 0.003) * 0.18;
     }
 
+    // 环视提示：进入太空段后出现，5 秒自动淡出
+    if (els.hintOrbit && !state.arrived && st.asc >= 1) {
+      if (!els.hintOrbit._shown) {
+        els.hintOrbit._shown = true;
+        els.hintOrbit.hidden = false;
+        setTimeout(function () {
+          if (els.hintOrbit) els.hintOrbit.classList.add('out');
+        }, 5000);
+      }
+    }
+
     // 校史文字：定位 + 淡入淡出
     var dt = Math.min(0.05, (now - updateWorld._last) / 1000 || 0.016);
     updateWorld._last = now;
@@ -1516,6 +1837,9 @@
     earth.visible = earthVis > 0.01;
     earth.position.y = -430 - (1 - earthVis) * 120;
     earth.userData.globe.rotation.y = now * 0.000035;
+
+    // 参照物：碎石 + 速度线（让前进感成立）
+    updateSpaceField(now, st, CRUISE);
 
     // 星球自转
     planetGroup.userData.globe.rotation.y = now * 0.00005;
@@ -1579,6 +1903,11 @@
   function tick() {
     RAF = requestAnimationFrame(tick);
     var now = performance.now();
+    // 帧间隔（封顶 1/20 秒：切后台回来时不会一帧跳太远）
+    var dt = trail._last2 ? Math.min(0.05, now / 1000 - trail._last2) : 0.016;
+    trail._last2 = now / 1000;
+    updateOrbit(dt, now);
+
     var st = updateRocket(now);
     updateCamera(now, st, false);
     updateWorld(now, st);
@@ -1598,7 +1927,8 @@
     goBtn: document.getElementById('go-btn'),
     hud: document.getElementById('hud'),
     countdown: document.getElementById('countdown'),
-    hint: document.getElementById('hint')
+    hint: document.getElementById('hint'),
+    hintOrbit: document.getElementById('hint-orbit')
   };
 
   var HISTORY = [
@@ -1665,42 +1995,93 @@
     return n;
   }
 
-  function drawHistoryTexture(item) {
-    var g = histCtx, W = histCanvas.width;
-    g.clearRect(0, 0, W, histCanvas.height);
+  function drawHistoryTexture(item, idx, total) {
+    var g = histCtx, W = histCanvas.width, H = histCanvas.height;
+    g.clearRect(0, 0, W, H);
     g.textAlign = 'center';
     g.textBaseline = 'middle';
 
-    // ---- 年份：金色，带辉光 ----
+    var CX = W / 2;
+
+    // ---- 顶部：细金线 + 两端小菱形 ----
+    function rule(y, halfW, alpha) {
+      var lg = g.createLinearGradient(CX - halfW, 0, CX + halfW, 0);
+      lg.addColorStop(0, 'rgba(254,206,14,0)');
+      lg.addColorStop(0.5, 'rgba(254,206,14,' + alpha + ')');
+      lg.addColorStop(1, 'rgba(254,206,14,0)');
+      g.strokeStyle = lg;
+      g.lineWidth = 2;
+      g.beginPath();
+      g.moveTo(CX - halfW, y);
+      g.lineTo(CX + halfW, y);
+      g.stroke();
+    }
+    function diamond(x, y, r, col) {
+      g.fillStyle = col;
+      g.beginPath();
+      g.moveTo(x, y - r); g.lineTo(x + r, y);
+      g.lineTo(x, y + r); g.lineTo(x - r, y);
+      g.closePath(); g.fill();
+    }
+
+    rule(38, 250, 0.55);
+    diamond(CX - 258, 38, 5, 'rgba(254,206,14,.8)');
+    diamond(CX + 258, 38, 5, 'rgba(254,206,14,.8)');
+
+    // ---- 小标签：广州大学校史 ----
     g.save();
-    g.font = '900 148px ' + FONT;
-    g.shadowColor = 'rgba(254,206,14,.9)';
-    g.shadowBlur = 56;
-    g.fillStyle = '#fece0e';
-    g.fillText(item.y, W / 2, 104);
-    // 再描一遍加强辉光
-    g.shadowBlur = 92;
-    g.fillStyle = 'rgba(254,206,14,.55)';
-    g.fillText(item.y, W / 2, 104);
+    g.font = '600 26px ' + FONT;
+    g.fillStyle = 'rgba(160,185,255,.75)';
+    g.shadowColor = 'rgba(80,130,255,.8)';
+    g.shadowBlur = 16;
+    g.fillText('广 州 大 学 校 史', CX, 76);
     g.restore();
 
-    // ---- 标题：白色，冷色辉光 ----
+    // ---- 年份：竖向渐变金 + 双层辉光 ----
     g.save();
-    g.font = '800 72px ' + FONT;
-    g.shadowColor = 'rgba(110,160,255,.85)';
-    g.shadowBlur = 40;
+    var yGr = g.createLinearGradient(0, 118, 0, 236);
+    yGr.addColorStop(0, '#fff3b0');
+    yGr.addColorStop(0.45, '#fece0e');
+    yGr.addColorStop(1, '#d99a00');
+    g.font = '900 150px ' + FONT;
+    // 外层柔光
+    g.shadowColor = 'rgba(254,206,14,.85)';
+    g.shadowBlur = 70;
+    g.fillStyle = yGr;
+    g.fillText(item.y, CX, 176);
+    // 内层锐利一次，让字口清楚
+    g.shadowBlur = 0;
+    g.fillText(item.y, CX, 176);
+    g.restore();
+
+    // ---- 标题：白字 + 冷色辉光 ----
+    g.save();
+    g.font = '800 68px ' + FONT;
+    g.shadowColor = 'rgba(110,160,255,.9)';
+    g.shadowBlur = 34;
     g.fillStyle = '#eef1ff';
-    g.fillText(item.t, W / 2, 226);
+    g.fillText(item.t, CX, 276);
     g.restore();
 
-    // ---- 描述：浅灰，深色描边保证在星空上也读得清 ----
+    // ---- 描述：两行以内，淡蓝灰 ----
     g.save();
-    g.font = '600 38px ' + FONT;
+    g.font = '600 36px ' + FONT;
     g.shadowColor = 'rgba(0,0,0,.95)';
-    g.shadowBlur = 22;
-    g.fillStyle = 'rgba(226,233,255,.86)';
-    wrapText(g, item.d, W / 2, 300, W - 110, 54);
+    g.shadowBlur = 20;
+    g.fillStyle = 'rgba(214,224,255,.84)';
+    wrapText(g, item.d, CX, 344, W - 160, 48);
     g.restore();
+
+    // ---- 底部：进度菱形（第几条 / 共几条）----
+    var n = total || 7;
+    var gap = 26;
+    var startX = CX - ((n - 1) * gap) / 2;
+    for (var d = 0; d < n; d++) {
+      var on = d <= (idx || 0);
+      diamond(startX + d * gap, 418, on ? 6 : 4,
+        on ? 'rgba(254,206,14,.95)' : 'rgba(150,170,220,.32)');
+    }
+    rule(444, 190, 0.3);
 
     histTex.needsUpdate = true;
   }
@@ -1748,7 +2129,7 @@
 
   // 最后一页校史放完的时刻 —— 到了就亮出「出发」按钮
   function goRevealAt() {
-    return historyStartAt() + T.HISTORY_GAP * HISTORY.length;
+    return historyStartAt() + T.HISTORY_GAP * HISTORY.length + 1600;
   }
 
   var lastCd = null;
@@ -1809,7 +2190,7 @@
   function showHistory(i) {
     var h = HISTORY[i];
     // 画到 3D 精灵上（不再用网页卡片）
-    drawHistoryTexture(h);
+    drawHistoryTexture(h, i, HISTORY.length);
     histTargetOpacity = 1;
     histFloat = 0;
   }
@@ -1842,7 +2223,7 @@
     if (window.__launchEvent) window.__launchEvent('depart');
 
     var veil = document.getElementById('veil');
-    if (veil) setTimeout(function () { veil.classList.add('on'); }, T.GLIDE * 0.72);
+    if (veil) setTimeout(function () { veil.classList.add('on'); }, T.GLIDE * 0.80);
   }
 
   function finishAndGo() {
