@@ -1,8 +1,0 @@
-# 文本文件统一用 LF 存进仓库（网页文件本该如此），图片按二进制处理，别让 git 动它们
-* text=auto eol=lf
-*.png binary
-*.ico binary
-*.webp binary
-*.jpg binary
-*.jpeg binary
-*.gif binary
