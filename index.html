@@ -94,6 +94,34 @@
     white-space: nowrap;
   }
 
+  /* ---------- 底部蒙版 ----------
+     三个导航按钮压在星空上，亮星经过时对比度会掉。
+     加一层很淡的自下而上渐变，等于给它们垫了块玻璃。 */
+  #scrim {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    height: clamp(96px, 17vh, 150px);
+    pointer-events: none; z-index: 2;
+    background: linear-gradient(to top,
+      rgba(4, 7, 16, .72) 0%,
+      rgba(4, 7, 16, .34) 45%,
+      rgba(4, 7, 16, 0) 100%);
+  }
+
+  /* ---------- 跳过动画 ----------
+     出发按钮要等升空完成（9.3 秒）才出现，键盘和读屏用户只能干等。
+     给他们一个一上来就能用的入口：平时视觉隐藏，聚焦时出现在左上角。 */
+  .skip-link {
+    position: fixed; top: 10px; left: 50%;
+    transform: translate(-50%, -160%);
+    z-index: 60;
+    padding: 10px 20px; border-radius: 999px;
+    background: #fece0e; color: #3a2c00;
+    font-size: 14px; font-weight: 800; text-decoration: none;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, .45);
+    transition: transform .22s ease;
+  }
+  .skip-link:focus-visible { transform: translate(-50%, 0); }
+
   #boot {
     position: fixed; inset: 0; z-index: 6;
     display: flex; flex-direction: column;
@@ -417,6 +445,10 @@
 <!-- 3D 画布 -->
 <canvas id="scene" aria-hidden="true"></canvas>
 <div id="veil" aria-hidden="true"></div>
+<div id="scrim" aria-hidden="true"></div>
+
+<!-- 键盘/读屏用户的一键入口：聚焦时才露出来 -->
+<a class="skip-link" href="https://www.gzhu.edu.cn/">跳过动画，直接前往广州大学</a>
 
 <!-- 启动遮罩：着色器编译完成前挡住黑屏 -->
 <div id="boot" role="status" aria-live="polite">
@@ -442,7 +474,7 @@
   <div class="bottom">
     <!-- 校史不再是网页卡片 —— 它现在是画在 3D 星空里的发光文字
          （见 assets/launch.js 的 histSprite）。这里只留状态提示。 -->
-    <p class="hint" id="hint">奶龙号正在飞往广州大学星…</p>
+    <p class="hint" id="hint" role="status" aria-live="polite">奶龙号正在飞往广州大学星…</p>
     <!-- 进入太空后提示可以拖动环视，几秒后自动淡出 -->
     <p class="hint hint-orbit" id="hint-orbit" hidden>拖动屏幕可以环视 · 松手会慢慢回正</p>
   </div>
