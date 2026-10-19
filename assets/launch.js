@@ -783,29 +783,57 @@
          ±Z 面变成朝上/朝下，只有 ±X 附近始终是「侧面」，
          追尾镜头才看得见。
        竖排：三个字在 canvas 里纵向排列，贴到圆柱上仍然是竖着的。 */
-    var nameTex2 = makeTexture(256, 1024, function (g, w, h) {
+    /* ------------------------------------------------------------
+       ⚠️ 贴花不能随便给弧宽 —— 会被横向拉伸
+
+       圆柱弧面贴图：纹理的 u 从 0 到 1 均匀铺在圆弧上，
+       所以贴花的**物理宽度** = 半径 × 弧度。
+       如果这个宽度和高度之比，跟画布的宽高比不一致，
+       字就会被横向拉长或压扁。
+
+       之前画布是 256×1024（宽高比 0.25），但 height=2.35、arcDeg=44
+       算出来的物理宽度是 1.63 × 0.768 = 1.25（宽高比 0.53）——
+       字被横向拉伸了 2.1 倍，看起来就是「变形」。
+
+       现在反过来：先定高度和画布，再由宽高比反算需要的弧度，
+       保证贴到圆柱上后 1:1，不再变形。
+       ------------------------------------------------------------ */
+    var NAME_H = 2.35;                  // 贴花高度（世界单位）
+    var NAME_CW = 340, NAME_CH = 1024;  // 画布尺寸，宽高比 ≈ 0.332
+    var NAME_ASPECT = NAME_CW / NAME_CH;
+
+    var nameTex2 = makeTexture(NAME_CW, NAME_CH, function (g, w, h) {
       g.clearRect(0, 0, w, h);
       g.textAlign = 'center';
       g.textBaseline = 'middle';
       var chars = ['奶', '龙', '号'];
+      var cell = h / 3;                  // 每个字占一格，格子接近正方形
       for (var k = 0; k < chars.length; k++) {
+        var cy = cell * (k + 0.5);
         g.save();
-        g.font = '900 168px "PingFang SC","Microsoft YaHei",sans-serif';
+        // 字号按格子宽度给，留一点边距防止描边被裁
+        g.font = '900 ' + Math.round(w * 0.78) + 'px "PingFang SC","Microsoft YaHei",sans-serif';
         // 深金字 + 浅色外发光：白箭体上也能压得住
         g.shadowColor = 'rgba(255,255,255,.95)';
-        g.shadowBlur = 22;
+        g.shadowBlur = 18;
         g.fillStyle = '#8a6a00';
-        g.fillText(chars[k], w / 2, 215 + k * 250);
+        g.fillText(chars[k], w / 2, cy + 4);
         // 描一圈亮边，增强立体感
         g.shadowBlur = 0;
-        g.lineWidth = 4;
+        g.lineWidth = 3;
         g.strokeStyle = 'rgba(255,255,255,.5)';
-        g.strokeText(chars[k], w / 2, 215 + k * 250);
+        g.strokeText(chars[k], w / 2, cy + 4);
         g.restore();
       }
     });
+
     var yName = Y0 + BH * 0.395;
-    var nameDecal2 = arcDecal(yName, 2.35, 44, nameTex2);
+    // 物理宽度 = 高度 × 画布宽高比；再由宽度反算弧度
+    var nameW = NAME_H * NAME_ASPECT;
+    var nameR = radiusAt(yName) + 0.075;
+    var nameArcDeg = (nameW / nameR) * 180 / Math.PI;
+
+    var nameDecal2 = arcDecal(yName, NAME_H, nameArcDeg, nameTex2);
     nameDecal2.rotation.y = Math.PI * 0.167;   // 30°
     rocket.add(nameDecal2);
 
