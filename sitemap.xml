@@ -10,12 +10,20 @@
   收录原则：只列**能独立访问、且有独立内容**的页面。
   本站是纯静态站，页面就那么几个，不需要脚本自动生成。
 
-  ⚠️ 没有收录的东西，以及为什么：
+  关于首页（/）—— 改过主意，这里说明原因：
 
-  · index.html（/）
-      首页是个会自动跳到 /home 的过场动画页。
-      收录它等于让搜索引擎抓到一堆重复的「奶龙正在护送你前往…」，
-      而且用户点进来也留不住 —— 没必要。
+    以前把 / 排除在外，因为那时候首页只是一个「5 秒后自动跳到
+    广州大学」的过场动画页，HTML 里几乎是空的，收录它等于让搜索引擎
+    抓到一堆重复的「奶龙正在护送你前往…」。
+
+    现在首页重做成了 3D 发射场景，并且：
+      · 有 344 字的真实校史正文（视觉隐藏但可抓取）
+      · 有 CollegeOrUniversity 的 JSON-LD 结构化数据
+      · 不再自动跳转 —— 什么时候走由用户决定
+
+    它已经是一个有独立内容的正经页面了，所以现在收录进来。
+
+  ⚠️ 仍然没有收录的东西，以及为什么：
 
   · 25 个学院
       show 页里的学院切换是纯前端状态，**没有 URL 参数**
@@ -38,18 +46,25 @@
         xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
                             http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
 
+  <!-- 首页：3D 发射场景 + 广州大学校史（有正文和结构化数据，不再自动跳转） -->
+  <url>
+    <loc>https://xn--psszg58cydsdq780c.com/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
   <!-- 主入口（导航页） -->
   <url>
     <loc>https://xn--psszg58cydsdq780c.com/home</loc>
     <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
+    <priority>0.9</priority>
   </url>
 
   <!-- 奶龙展览馆：25 个学院、全部作品都在这里 -->
   <url>
     <loc>https://xn--psszg58cydsdq780c.com/show</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
+    <priority>0.8</priority>
   </url>
 
   <!-- 网站公告 -->
