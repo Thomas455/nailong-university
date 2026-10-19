@@ -320,6 +320,32 @@
   .hint.gone { opacity: 0; }
 
   /* 环视提示：太空段出现几秒后自动淡出，别一直占着屏幕 */
+  /* 校史翻页按钮：低调地贴在提示上方，只在太空段出现 */
+  .hist-nav {
+    display: flex; gap: 10px; justify-content: center;
+    margin-top: 6px;
+  }
+  .hist-nav[hidden] { display: none; }
+  .hist-nav button {
+    appearance: none;
+    padding: 7px 16px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, .26);
+    background: rgba(12, 18, 34, .55);
+    color: rgba(228, 236, 255, .86);
+    font-size: clamp(11.5px, 3.1vw, 12.5px);
+    letter-spacing: .05em;
+    cursor: pointer;
+    transition: background .2s, border-color .2s, opacity .3s;
+    backdrop-filter: blur(6px);
+  }
+  .hist-nav button:hover,
+  .hist-nav button:focus-visible {
+    background: rgba(254, 206, 14, .18);
+    border-color: rgba(254, 206, 14, .6);
+  }
+  .hist-nav button:disabled { opacity: .32; cursor: default; }
+
   .hint-orbit {
     font-size: clamp(11px, 3.1vw, 12.5px);
     color: rgba(238, 241, 255, .42);
@@ -484,8 +510,14 @@
     <!-- 校史不再是网页卡片 —— 它现在是画在 3D 星空里的发光文字
          （见 assets/launch.js 的 histSprite）。这里只留状态提示。 -->
     <p class="hint" id="hint" role="status" aria-live="polite">奶龙号正在飞往广州大学星…</p>
+    <!-- 校史翻页：给不知道「轻点屏幕能跳节」的人一个看得见的入口。
+         键盘用户也能 Tab 到这里，回车触发。 -->
+    <div class="hist-nav" id="hist-nav" hidden>
+      <button type="button" id="hist-prev" aria-label="上一节校史">‹ 上一节</button>
+      <button type="button" id="hist-next" aria-label="下一节校史">下一节 ›</button>
+    </div>
     <!-- 进入太空后提示可以拖动环视，几秒后自动淡出 -->
-    <p class="hint hint-orbit" id="hint-orbit" hidden>拖动屏幕可以环视 · 松手会慢慢回正</p>
+    <p class="hint hint-orbit" id="hint-orbit" hidden>拖动环视 · 轻点跳一节 · 空格暂停</p>
   </div>
 
   <!-- 没有 WebGL 时的静态兜底 -->

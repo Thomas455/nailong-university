@@ -2055,6 +2055,22 @@
       }
     });
 
+    // 方向键：← 上一节、→ 下一节。和「轻点画面」功能对齐，
+    // 但键盘用户不需要去猜屏幕可以点。
+    window.addEventListener('keydown', function (e) {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      var t = e.target;
+      if (t && (t.tagName === 'BUTTON' || t.tagName === 'A' ||
+                t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) {
+        // 焦点在翻页按钮上时让按钮自己处理
+        if (t.id === 'hist-next' || t.id === 'hist-prev') return;
+      }
+      e.preventDefault();
+      if (e.key === 'ArrowRight') advanceHistory();
+      else rewindHistory();
+    });
+
+
     cv.addEventListener('pointerdown', onDown);
     cv.addEventListener('pointermove', onMove);
     cv.addEventListener('pointerup', onUp);
@@ -2353,6 +2369,19 @@
       padGroup.userData.ring.material.opacity = 0.32 + Math.sin(now * 0.003) * 0.18;
     }
 
+    // 校史翻页按钮：只在「校史已经开始、还没抵达」时出现
+    if (els.histNav) {
+      // 这里在 updateWorld 里，没有 el 变量，用动画时钟直接比
+      var showNav = !state.arrived && state.clock >= historyStartAt();
+      if (showNav !== els.histNav._on) {
+        els.histNav._on = showNav;
+        els.histNav.hidden = !showNav;
+      }
+      if (showNav && els.histPrev) {
+        els.histPrev.disabled = state.historyIdx <= 0;
+      }
+    }
+
     // 环视提示：进入太空段后出现，5 秒自动淡出
     if (els.hintOrbit && !state.arrived && st.asc >= 1) {
       if (!els.hintOrbit._shown) {
@@ -2553,7 +2582,10 @@
     hud: document.getElementById('hud'),
     countdown: document.getElementById('countdown'),
     hint: document.getElementById('hint'),
-    hintOrbit: document.getElementById('hint-orbit')
+    hintOrbit: document.getElementById('hint-orbit'),
+    histNav: document.getElementById('hist-nav'),
+    histPrev: document.getElementById('hist-prev'),
+    histNext: document.getElementById('hist-next')
   };
 
   var HISTORY = [
@@ -2992,8 +3024,34 @@
     skipFx = { at: performance.now(), item: next, swapped: false };
 
     state.historyIdx = next;
-    state.historyShownAt = target;
+    // 用**墙钟**记时间点：updateOverlay 判「该翻下一页了」用的是
+    // now - state.historyShownAt，两边必须是同一时间基准。
+    // 这里原来写的是动画时钟的目标值，混用会导致刚跳完又被自动翻一页。
+    state.historyShownAt = performance.now();
     if (els.hint) els.hint.textContent = '已跳到下一节 · 再次轻点可继续';
+  }
+
+  /* 回到上一节校史。
+     翻页按钮要能往回走，否则点到下一节就没法回头看了。 */
+  function rewindHistory() {
+    if (state.arrived) return;
+    if (state.clock < historyStartAt()) return;
+    var nowMs = performance.now();
+    if (nowMs - lastSkipAt < SKIP_COOLDOWN_MS) return;
+
+    var prev = state.historyIdx - 1;
+    if (prev < 0) return;
+
+    var target = historyStartAt() + T.HISTORY_GAP * prev + 1;
+    lastSkipAt = nowMs;
+    clockTween = { from: state.clock, to: target, at: performance.now() };
+    skipFx = { at: performance.now(), item: prev, swapped: false };
+    state.historyIdx = prev;
+    // 用**墙钟**记时间点：updateOverlay 判「该翻下一页了」用的是
+    // now - state.historyShownAt，两边必须是同一时间基准。
+    // 这里原来写的是动画时钟的目标值，混用会导致刚跳完又被自动翻一页。
+    state.historyShownAt = performance.now();
+    if (els.hint) els.hint.textContent = '已回到上一节 · 轻点屏幕可继续';
   }
 
   function revealGoBtn() {
@@ -3183,6 +3241,20 @@
     updateRocket(now);
 
     if (els.goBtn) els.goBtn.addEventListener("click", depart);
+
+    // 校史翻页按钮（放在这里而不是 bindOrbit —— els 要到这一节才定义）
+    if (els.histNext) {
+      els.histNext.addEventListener("click", function (e) {
+        e.stopPropagation();
+        advanceHistory();
+      });
+    }
+    if (els.histPrev) {
+      els.histPrev.addEventListener("click", function (e) {
+        e.stopPropagation();
+        rewindHistory();
+      });
+    }
 
     tick();
     window.__launchReady = true;
