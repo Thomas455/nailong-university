@@ -2306,6 +2306,8 @@
   var WARM_MAX = 30;         // 保险：最多等 30 帧，别卡死
 
   function tick() {
+    // 上下文丢了就别再排帧了，等 restored 事件重新拉起
+    if (ctxLost) { RAF = null; return; }
     RAF = requestAnimationFrame(tick);
     var now = performance.now();
 
@@ -2803,6 +2805,61 @@
   /* ============================================================
      尺寸
      ============================================================ */
+  /* ============================================================
+     健壮性
+
+     ① WebGL 上下文丢失
+        手机显存紧张、切到微信再切回来、GPU 驱动重置，都会丢上下文。
+        原来完全没处理 —— 丢了就是永久黑屏，用户只能刷新。
+        这里监听 webglcontextlost / restored，丢失时切到降级页，
+        恢复时重建尺寸并重启渲染循环。
+
+     ② 标签页隐藏时暂停
+        requestAnimationFrame 在后台仍然会被调度（浏览器只是降频）。
+        停掉可以省电省发热，回来时也不会因为时间跳变而错位。
+     ============================================================ */
+  var ctxLost = false;
+
+  canvas.addEventListener('webglcontextlost', function (e) {
+    // preventDefault 是必须的，否则浏览器不会触发 restored
+    e.preventDefault();
+    ctxLost = true;
+    if (RAF) { cancelAnimationFrame(RAF); RAF = null; }
+    // 复用已有的降级样式：显示静态页 + 直链，比黑屏强得多
+    document.body.classList.add('no-3d');
+  }, false);
+
+  canvas.addEventListener('webglcontextrestored', function () {
+    ctxLost = false;
+    document.body.classList.remove('no-3d');
+    try {
+      resize();
+      renderer.resetState && renderer.resetState();
+      frameLast = 0;      // 别让中断期间的时间算进动画
+      warmDone = true;    // 已经编译过一次，不用重新预热
+      if (!RAF) tick();
+    } catch (err) {
+      // 恢复失败就留在降级页，不要再抛
+    }
+  }, false);
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      if (RAF) { cancelAnimationFrame(RAF); RAF = null; }
+    } else if (!ctxLost && !RAF) {
+      // 回来时把帧计时的基准清掉，避免一帧吃掉几十秒
+      frameLast = 0;
+      warmLast = performance.now();
+      tick();
+    }
+  }, false);
+
+  // 横竖屏切换：resize 能兜住大部分情况，这里补一次延迟重算，
+  // 因为部分移动浏览器在 orientationchange 当下拿到的尺寸还是旧的。
+  window.addEventListener('orientationchange', function () {
+    setTimeout(function () { try { resize(); } catch (e) {} }, 260);
+  }, false);
+
   function resize() {
     var w = window.innerWidth, h = window.innerHeight;
     renderer.setSize(w, h, false);
