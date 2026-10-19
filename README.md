@@ -59,7 +59,7 @@ tools/og.html               分享卡片的排版源文件
 tools/preview-core.png      抠图效果的白底预览
 ```
 
-> 首页现在不用 `ring.svg` 了 —— 文字环随 3D 改版一起撤掉，这个文件已成死文件，
+> 首页现在不用 `ring.svg` 了 —— 文字环随 3D 改版一起撤掉，该文件已于 2026-10 删除。
 > 留着只是还没删。
 
 重新生成图片资源（改图之后跑）：
@@ -705,7 +705,7 @@ server {
   location / { try_files $uri $uri/ /index.html; }   # 访问不存在的路径也回这一页
 
   location = /index.html { add_header Cache-Control "no-cache"; }   # 改文案要能立刻生效
-  # ring.svg 已经废弃（文字环随 3D 改版撤掉），留着只为兼容旧缓存
+  # ring.svg 已删除（文字环随 3D 改版撤掉）；旧缓存里若还引用它，缺失不影响页面
   location ~* \.(svg|png|webp|ico)$ { expires 7d; add_header Cache-Control "public"; }
 }
 ```
