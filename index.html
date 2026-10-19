@@ -5,21 +5,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>宇宙奶龙大学</title>
-<meta name="description" content="奶龙正在护送你前往宇宙奶龙大学。">
-<!-- 本站只做深色一套，手机浏览器顶栏也跟着变深，不会出现「深色页面配白色顶栏」 -->
+<meta name="description" content="乘坐奶龙号，从发射台飞往宇宙奶龙大学。">
+<!-- 本站只做深色一套，手机浏览器顶栏也跟着变深 -->
 <meta name="theme-color" content="#080b1a">
 <meta property="og:type" content="website">
 <meta property="og:title" content="宇宙奶龙大学">
-<meta property="og:description" content="奶龙正在护送你前往宇宙奶龙大学">
+<meta property="og:description" content="乘坐奶龙号，从发射台飞往宇宙奶龙大学">
 <!-- 换域名时改这里（必须是绝对地址，微信抓不到图就不显示卡片） -->
 <meta property="og:image" content="https://xn--psszg58cydsdq780c.com/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<!-- 页签图标。别再加 512x512 的 favicon.png，浏览器会去下那张 93KB 的图 -->
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="apple-touch-icon" href="favicon.png">
-<!-- 百度统计。本页 3 秒后就跳走，脚本必须最早加载，否则统计不到 -->
+<!-- 百度统计。这一版不再自动跳转，但仍然尽早加载，页面停留期间的停留时长才有意义 -->
 <link rel="dns-prefetch" href="//hm.baidu.com">
 <link rel="preconnect" href="https://hm.baidu.com" crossorigin>
 <script>
@@ -29,260 +28,259 @@
     var hm = document.createElement('script');
     hm.src = 'https://hm.baidu.com/hm.js?c6a7e5d19abc2b50696c43f0cbf78d4b';
     hm.async = true;
-    hm.onload = function () { window.__analytics.ready = true; };   // 加载完就会自动上报
-    hm.onerror = function () { window.__analytics.failed = true; }; // 多半是被广告拦截插件挡了
+    hm.onload = function () { window.__analytics.ready = true; };
+    hm.onerror = function () { window.__analytics.failed = true; };
     var s = document.getElementsByTagName('script')[0];
     s.parentNode.insertBefore(hm, s);
   })();
 </script>
-<!-- 资源用相对路径，别改成 /xxx（双击本地打开会找不到） -->
-<link rel="preload" as="image" type="image/webp" href="core.webp" fetchpriority="high">
-<noscript><meta http-equiv="refresh" content="3;url=https://www.gzhu.edu.cn/"></noscript>
 <style>
-  /* 只做深色一套。color-scheme 固定 dark，这样滚动条、表单控件、
-     <dialog> 的默认配色也跟着走，不会出现「深色页面配浅色控件」。 */
+  /* 只做深色一套。color-scheme 固定 dark，滚动条、表单控件也跟着走。 */
   :root {
     --bg: #080b1a;
     --fg: #eef1ff;
     --muted: #8b93b8;
     --ink: #fece0e;
-    --warn: #ff6b60;   /* 暂停态：红（深色底上提亮，保证对比） */
-    --go: #3ddc84;     /* 恢复态：绿（同上） */
+    --warn: #ff6b60;
+    --go: #3ddc84;
     --track: rgba(254, 206, 14, .18);
     --card: #141a2e;
-    --size: min(64vw, 44vh, 340px);
     color-scheme: dark;
   }
 
   * { box-sizing: border-box; margin: 0; }
-  body {
-    min-height: 100vh;
-    min-height: 100svh;
-    display: grid;
-    place-items: center;
-    padding: 24px 16px 56px;
+
+  html, body {
+    height: 100%;
     overflow: hidden;
     background: var(--bg);
     color: var(--fg);
     font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
-    cursor: pointer;
-    user-select: none;
     -webkit-tap-highlight-color: transparent;
   }
-  /* 星星层：位置固定（坐标写死在 background-image 里），整层缓慢闪烁。
-     只对 opacity 做动画 —— 早期版本想用 background-position 让星星移动，实测那样
-     多张背景图各自独立、简写形式下根本不生效，而且要 10 个图层各配一套延迟。 */
-  body::before {
-    content: "";
-    background-image:
-      radial-gradient(1.6px 1.6px at 12% 18%, #fff, transparent),
-      radial-gradient(1.2px 1.2px at 28% 72%, #dfe8ff, transparent),
-      radial-gradient(1.8px 1.8px at 44% 12%, #fff, transparent),
-      radial-gradient(1.1px 1.1px at 61% 46%, #cfe0ff, transparent),
-      radial-gradient(1.5px 1.5px at 78% 24%, #fff, transparent),
-      radial-gradient(1.2px 1.2px at 89% 66%, #e6ecff, transparent),
-      radial-gradient(1.4px 1.4px at 8% 88%, #fff, transparent),
-      radial-gradient(1.1px 1.1px at 68% 86%, #cfe0ff, transparent),
-      radial-gradient(1.3px 1.3px at 35% 38%, #fff, transparent),
-      radial-gradient(1.7px 1.7px at 95% 8%, #fff, transparent);
+  body { user-select: none; }
+
+  /* 3D 画布铺满全屏。fixed 而不是 absolute：手机地址栏伸缩时不跟着抖。 */
+  #scene {
+    position: fixed; inset: 0;
+    width: 100%; height: 100%;
+    display: block;
+    touch-action: manipulation;
   }
 
-  /* ---------- 背景：三层，全部纯 CSS，零请求 ----------
-     自下而上：.flow（流动的彩色光斑）→ .frost（磨砂玻璃，把它糊开）→ 星星（保持清晰）
-     z-index 全为负，所以永远在内容底下，也不会挡住点击（pointer-events: none）。 */
-  .flow, .frost, body::before { position: fixed; inset: 0; pointer-events: none; }
+  /* 最后冲进星球时的白场。盖在画布上、在所有 UI 之下。 */
+  #veil {
+    position: fixed; inset: 0; z-index: 5;
+    background: radial-gradient(circle at 50% 45%, #fff8e0 0%, #ffd979 38%, #fece0e 100%);
+    opacity: 0; pointer-events: none;
+    transition: opacity .7s ease-in;
+  }
+  #veil.on { opacity: 1; }
 
-  /* 第 1 层：5 团光斑各自游动。每团单独一个 keyframes，
-     路径和时长都不同，叠在一起才不会看出「循环」的机械感。
-     时长控制在 18~28 秒 —— 再慢就看不出在动，再快会显得躁。 */
-  .flow { z-index: -3; overflow: hidden; }
-  .flow i { position: absolute; display: block; border-radius: 50%; }
-  .flow i:nth-child(1) { width: 58vmax; height: 58vmax; left: -8%;  top: -12%;
-                         background: rgba(122, 152, 255, .85); animation: flow1 20s ease-in-out infinite; }
-  .flow i:nth-child(2) { width: 48vmax; height: 48vmax; right: -10%; top: -8%;
-                         background: rgba(255, 186, 122, .78); animation: flow2 25s ease-in-out infinite; }
-  .flow i:nth-child(3) { width: 52vmax; height: 52vmax; right: -4%; bottom: -16%;
-                         background: rgba(176, 132, 255, .76); animation: flow3 22s ease-in-out infinite; }
-  .flow i:nth-child(4) { width: 44vmax; height: 44vmax; left: -6%;  bottom: -14%;
-                         background: rgba(120, 226, 200, .70); animation: flow4 28s ease-in-out infinite; }
-  .flow i:nth-child(5) { width: 38vmax; height: 38vmax; left: 34%;  top: 28%;
-                         background: rgba(255, 226, 122, .62); animation: flow5 18s ease-in-out infinite; }
+  /* ---------- 覆盖层 ---------- */
+  /* 整个 HUD 不吃点击，只有里面的按钮单独开启 ——
+     否则透明区域会把 3D 拖拽/点击全挡住。 */
+  .hud {
+    position: fixed; inset: 0; z-index: 10;
+    pointer-events: none;
+    display: flex; flex-direction: column;
+    /* 底部留出 64px：右下「关于」、正下「回主页」都固定在 bottom:10px，
+       不留白的话校史卡下面的提示文字会压在按钮上 */
+    padding: max(18px, env(safe-area-inset-top)) 18px max(64px, env(safe-area-inset-bottom));
+    transition: opacity .5s;
+  }
+  .hud.gone { opacity: 0; }
 
-  /* 第 2 层：磨砂玻璃。backdrop-filter 把下面那层流动的光斑糊成一片，柔和很多。
-     底色只盖 52%，留足够的光斑透出来 —— 盖太多就糊成一片死板的纯色了。 */
-  .frost { z-index: -2; background: color-mix(in srgb, var(--bg) 52%, transparent);
-           -webkit-backdrop-filter: blur(48px) saturate(160%);
-           backdrop-filter: blur(48px) saturate(160%); }
-  /* 不支持 backdrop-filter 的老浏览器：退回不透明底色，至少不难看 */
-  @supports not (backdrop-filter: blur(2px)) {
-    .frost { background: var(--bg); }
+  /* ---------- 顶部标题 + 语录 ---------- */
+  .top { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-size: clamp(15px, 4vw, 19px); font-weight: 800; letter-spacing: .14em;
+    text-shadow: 0 2px 18px rgba(0, 0, 0, .85), 0 0 40px rgba(8, 11, 26, .9);
+  }
+  .brand .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--ink);
+    box-shadow: 0 0 12px var(--ink);
+    animation: pulseDot 1.6s ease-in-out infinite;
   }
 
-  /* 第 3 层：星星压在磨砂玻璃之上，所以 twinkle 时不会被糊掉 */
-  body::before { z-index: -1; opacity: 0; }
-
-  /* 光斑亮度和星星闪烁：只有深色一套，直接写死 */
-  .flow i { opacity: .8; }
-  body::before { opacity: .9; animation: twinkle 4s ease-in-out infinite; }
-
-  /* 光斑游动：位移 + 缩放，都在 GPU 上跑（transform 不触发重排） */
-  @keyframes flow1 { 0%,100% { transform: translate3d(0,0,0) scale(1); }
-                     33%     { transform: translate3d(16vw,10vh,0) scale(1.18); }
-                     66%     { transform: translate3d(6vw,22vh,0) scale(.92); } }
-  @keyframes flow2 { 0%,100% { transform: translate3d(0,0,0) scale(1.05); }
-                     40%     { transform: translate3d(-20vw,16vh,0) scale(.88); }
-                     70%     { transform: translate3d(-8vw,30vh,0) scale(1.2); } }
-  @keyframes flow3 { 0%,100% { transform: translate3d(0,0,0) scale(1); }
-                     35%     { transform: translate3d(-18vw,-14vh,0) scale(1.22); }
-                     75%     { transform: translate3d(-4vw,-26vh,0) scale(.9); } }
-  @keyframes flow4 { 0%,100% { transform: translate3d(0,0,0) scale(.95); }
-                     45%     { transform: translate3d(22vw,-18vh,0) scale(1.15); }
-                     80%     { transform: translate3d(30vw,-4vh,0) scale(1); } }
-  @keyframes flow5 { 0%,100% { transform: translate3d(0,0,0) scale(1.1); }
-                     50%     { transform: translate3d(-14vw,18vh,0) scale(.85); } }
-  /* 星星明暗闪动 */
-  @keyframes twinkle {
-    0%, 100% { opacity: .55; }
-    50%      { opacity: .95; }
-  }
-  main { display: flex; flex-direction: column; align-items: center; gap: 32px; text-align: center; }
-
-  /* 校徽：白底圆盘 + 旋转文字环 + 不转的中心奶龙，外面一圈进度条 */
-  .wrap { position: relative; display: inline-block;   /* 热区和光晕要相对它定位 */
-          transition: transform .45s cubic-bezier(.5, 0, .75, 0), opacity .45s ease-in; }
-  .badge { position: relative; width: var(--size); aspect-ratio: 1; }
-  .badge::before { content: ""; position: absolute; inset: 1.4%; border-radius: 50%; background: #fff; }
-  /* 奶龙和内联 svg 都要绝对定位铺满徽章 */
-  .badge img, .badge .ring { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .progress { position: absolute; inset: -5.5%; width: 111%; height: 111%; transform: rotate(-90deg); overflow: visible; }
-  .progress circle { fill: none; stroke-width: 1.1; stroke-linecap: round; }
-  .progress .track { stroke: var(--track); }
-  .progress .bar { stroke: var(--ink); stroke-dasharray: 100; stroke-dashoffset: 100; }
-
-  /* 只给读屏器的文字，视觉上藏起来（但不能 display:none，否则读屏器也读不到） */
-  .sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
-        overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-
-  /* 点奶龙：热区铺满徽章，点了暂停倒计时 */
-  .hit { position: absolute; inset: 0; z-index: 3; border: 0; padding: 0; background: none;
-         border-radius: 50%; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-  .hit:focus-visible { outline: 2px solid var(--ink); outline-offset: 6px; }
-  /* 光晕跟白盘一样大，渐变边缘就收干净。不能给 .wrap 加 overflow:hidden —— 会裁掉 -5.5% 的进度条 */
-  .halo { position: absolute; inset: 1.4%; border-radius: 50%; pointer-events: none; opacity: 0;
-          transform: scale(.9); transition: opacity .3s, transform .3s;
-          background: radial-gradient(circle at center, rgba(254,206,14,.32) 0 46%, rgba(254,206,14,0) 72%); }
-  .hit:hover + .halo, .hit:focus-visible + .halo { opacity: 1; transform: scale(1); }
-  /* 摸头态：白盘泛粉 + 红光晕，一眼看出「被拦下了」 */
-  .petting .badge::before { background: #ffd9d9; }
-  .petting .halo { opacity: 1; transform: scale(1);
-                   background: radial-gradient(circle at center, rgba(255,86,86,.34) 0 46%, rgba(255,86,86,0) 72%); }
-  .petting .pet-face { animation: nudge .5s ease-out; }
-  .petting .progress .bar { stroke: var(--warn); }
-  .petting .status { color: var(--warn); }
-  /* 恢复态：绿色闪一下，表示「重新开始计时了」 */
-  .resuming .badge::before { background: #d9f5e4; }
-  .resuming .halo { opacity: 1; transform: scale(1);
-                    background: radial-gradient(circle at center, rgba(31,157,85,.34) 0 46%, rgba(31,157,85,0) 72%); }
-  .resuming .progress .bar { stroke: var(--go); }
-
-  /* 两条状态提示共用同一个「槽位」：高度写死，一开始就占好位置。
-     之前用 height:0 → auto 展开，会把下面的「立即前往」乃至整个徽章顶得上下乱跳。 */
-  .msg-slot { position: relative; width: 100%; height: 44px; }
-  .pet-msg, .resume-msg {
-    position: absolute; inset: 0;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-    opacity: 0; visibility: hidden;            /* hidden 而非仅透明：读屏器不会念没显示的那条 */
-    transition: opacity .25s, visibility .25s;
-  }
-  .petting  .pet-msg    { opacity: 1; visibility: visible; }
-  .resuming .resume-msg { opacity: 1; visibility: visible; }
-  .pet-msg b, .resume-msg b { font-size: clamp(15px, 4vw, 18px); font-weight: 800; letter-spacing: .04em; }
-  .pet-msg b { color: var(--warn); }
-  .resume-msg b { color: var(--go); }
-  .pet-msg span, .resume-msg span { font-size: 13px; color: var(--muted); }
-
-  /* 顶部随机语录：从同目录 1.txt 随机抽一行，点一下换一句。
-     高度一开始就写死两行，取不到内容（file:// 双击、或 1.txt 还没放上去）
-     也不会把下面的徽章顶得上下跳。
-     做成实底小卡片：彩色流动背景一直在变，半透明/裸文字的对比度没法保证。 */
-  .quote-slot { width: 100%; min-height: 4.2em; display: flex; align-items: center; justify-content: center; }
+  /* 语录：放在标题下面一行，小字，不抢 3D 的视线 */
   .quote {
-    max-width: 30em;
-    display: flex; align-items: center; justify-content: center;
-    padding: 9px 18px; border-radius: 14px; text-align: center;
-    font-size: clamp(13px, 3.6vw, 15px); font-weight: 600; line-height: 1.6;
-    color: var(--fg);
-    /* 比 --card 稍亮一档，否则在深色背景上糊成一片看不出是卡片 */
-    background: #1e2540;
-    border: 1px solid rgba(254, 206, 14, .38);
-    box-shadow: 0 6px 22px rgba(0, 0, 0, .5);
+    max-width: 26em; text-align: center;
+    font-size: clamp(12px, 3.3vw, 13.5px); line-height: 1.7; font-weight: 600;
+    color: rgba(238, 241, 255, .82);
+    text-shadow: 0 1px 12px rgba(0, 0, 0, .95), 0 0 24px rgba(8, 11, 26, .9);
+    min-height: 1.7em;
+    transition: opacity .35s;
+  }
+  .quote:empty { opacity: 0; }
+  .quote.on { animation: quoteIn .5s ease-out; }
+
+  /* ---------- 倒计时 ---------- */
+  /* 绝对居中，不参与 flex 排布 —— 否则它 hidden 之后会把下面的
+     校史卡片顶到顶部去（踩过这个坑）。 */
+  #countdown {
+    position: fixed; left: 50%; top: 46%;
+    transform: translate(-50%, -50%);
+    font-size: clamp(52px, 16vw, 108px); font-weight: 900;
+    line-height: 1; letter-spacing: .04em;
+    color: var(--ink);
+    text-shadow: 0 0 40px rgba(254, 206, 14, .65), 0 0 90px rgba(254, 206, 14, .35),
+                 0 4px 30px rgba(0, 0, 0, .9);
+    pointer-events: none;
+    z-index: 12;
+  }
+  #countdown.pulse { animation: cdPulse .55s cubic-bezier(.3, 1.6, .6, 1); }
+  #countdown[hidden] { display: none; }
+
+  /* ---------- 校史卡片 ---------- */
+  /* .bottom 用 margin-top:auto 压到底部（HUD 是 flex column），
+     .top 在上面，中间大片留给 3D 画面。 */
+  .bottom {
+    margin-top: auto;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 8px;
+  }
+  .history {
+    margin: 0 auto;
+    width: min(560px, calc(100vw - 36px));
+    padding: 16px 20px 14px;
+    border-radius: 18px;
+    /* 实底 + 描边：3D 背景一直在变，纯文字对比度没法保证 */
+    background: rgba(13, 18, 36, .82);
+    border: 1px solid rgba(254, 206, 14, .28);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 255, 255, .05);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    backdrop-filter: blur(14px) saturate(140%);
+    pointer-events: none;
+    transition: opacity .5s, transform .5s;
+  }
+  .history[hidden] { display: none; }
+  .history.dim { opacity: .55; }
+  .history.hidden { opacity: 0; transform: translateY(14px); }
+  .history.in { animation: cardIn .55s cubic-bezier(.2, .9, .3, 1); }
+
+  .h-year {
+    font-size: clamp(19px, 5.2vw, 24px); font-weight: 900;
+    color: var(--ink); letter-spacing: .06em;
+    text-shadow: 0 0 22px rgba(254, 206, 14, .4);
+  }
+  .h-title {
+    margin-top: 3px;
+    font-size: clamp(14px, 4vw, 16px); font-weight: 800; color: var(--fg);
+  }
+  .h-text {
+    margin-top: 7px;
+    font-size: clamp(12.5px, 3.4vw, 13.5px); line-height: 1.75; color: rgba(238, 241, 255, .72);
+  }
+  .h-dots { display: flex; gap: 6px; margin-top: 12px; }
+  .h-dots i {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: rgba(238, 241, 255, .18);
+    transition: background .3s, box-shadow .3s, transform .3s;
+  }
+  .h-dots i.on {
+    background: var(--ink);
+    box-shadow: 0 0 10px rgba(254, 206, 14, .8);
+    transform: scale(1.25);
+  }
+
+  /* ---------- 悬浮「出发」按钮 ---------- */
+  .go-btn {
+    position: fixed; left: 50%; top: 50%;
+    transform: translate(-50%, -50%) scale(.85);
+    z-index: 20;
+    display: flex; align-items: center; gap: 10px;
+    padding: 16px 34px;
+    border: 0; border-radius: 999px;
+    font: inherit; font-size: clamp(15px, 4.2vw, 17px); font-weight: 800; letter-spacing: .08em;
+    color: #3a2c00;
+    background: linear-gradient(180deg, #ffe066 0%, #fece0e 55%, #e8b400 100%);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, .35) inset,
+                0 10px 40px rgba(254, 206, 14, .45),
+                0 0 80px rgba(254, 206, 14, .28);
     cursor: pointer;
-    transition: transform .2s, box-shadow .2s, border-color .2s, background-color .2s;
+    opacity: 0; pointer-events: none;
+    transition: opacity .6s, transform .6s cubic-bezier(.2, 1.3, .4, 1), box-shadow .3s;
   }
-  .quote:empty { display: none; }          /* 没内容时整块不显示 */
-  .quote:hover { transform: translateY(-2px); border-color: var(--ink); background: #252e4f;
-                 box-shadow: 0 10px 28px rgba(0, 0, 0, .6); }
-  /* 换句子时淡入一下，比硬切自然 */
-  .quote.on { animation: quoteIn .45s ease-out; }
-
-  .copy { display: flex; flex-direction: column; align-items: center; gap: 10px; transition: opacity .3s, transform .3s; }
-  h1 { font-size: clamp(26px, 7vw, 40px); font-weight: 800; letter-spacing: .12em; padding-left: .12em; }
-  .status { font-size: clamp(14px, 4vw, 17px); }
-  .dots i {
-    display: inline-block; width: .3em; height: .3em; margin-left: .18em;
-    border-radius: 50%; background: currentColor; vertical-align: middle;
-    animation: dot .8s ease-in-out infinite;
+  .go-btn[hidden] { display: none; }
+  .go-btn.show {
+    opacity: 1; pointer-events: auto;
+    transform: translate(-50%, -50%) scale(1);
+    animation: goBreathe 2.4s ease-in-out infinite;
   }
-  .dots i:nth-child(2) { animation-delay: .12s; }
-  .dots i:nth-child(3) { animation-delay: .24s; }
-  .hint { font-size: 13px; color: var(--muted); }
-  .hint a { color: inherit; }
-
-  /* 右下角「关于」：打开时暂停倒计时 */
-  .about-btn {
-    position: fixed; right: max(8px, env(safe-area-inset-right)); bottom: max(8px, env(safe-area-inset-bottom));
-    padding: 8px 10px; border: 0; background: none; color: var(--muted);
-    font: inherit; font-size: 13px; cursor: pointer;
-    text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px;
-    transition: color .2s, text-decoration-color .2s, opacity .3s;
+  .go-btn:hover, .go-btn:focus-visible {
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, .5) inset,
+                0 14px 50px rgba(254, 206, 14, .65),
+                0 0 110px rgba(254, 206, 14, .45);
   }
-  .about-btn:hover, .about-btn:focus-visible { color: var(--fg); text-decoration-color: currentColor; }
+  .go-btn.gone { opacity: 0; transform: translate(-50%, -50%) scale(1.35); pointer-events: none; }
+  .go-btn .arrow { font-size: 1.1em; line-height: 1; }
 
-  /* 正下方「回主页」房子图标。和左下 GitHub、右下「关于」凑成三个角。 */
+  /* 「还没到」的提示，按钮未出现时给个方向感 */
+  .hint {
+    margin: 0 auto 6px;
+    font-size: clamp(12px, 3.4vw, 13px); color: rgba(238, 241, 255, .55);
+    text-align: center; letter-spacing: .06em;
+    text-shadow: 0 1px 10px rgba(0, 0, 0, .9);
+    transition: opacity .4s;
+  }
+  .hint.gone { opacity: 0; }
+
+  /* ---------- 三个原有按钮 ---------- */
+  .gh-btn {
+    position: fixed; left: max(10px, env(safe-area-inset-left)); bottom: max(10px, env(safe-area-inset-bottom));
+    z-index: 30;
+    display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%;
+    color: var(--muted); text-decoration: none; opacity: .75; overflow: hidden;
+    transition: color .2s, opacity .2s, background-color .2s, transform .25s;
+  }
+  .gh-btn:hover, .gh-btn:focus-visible {
+    color: var(--fg); opacity: 1; background: var(--track); transform: rotate(-10deg) scale(1.1);
+  }
+  .gh-btn svg { display: block; width: 23px; height: 23px; }
+
   .home-btn {
     position: fixed; left: 50%; transform: translateX(-50%);
-    bottom: max(8px, env(safe-area-inset-bottom));
-    display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    z-index: 30;
+    display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%;
     color: var(--muted); text-decoration: none; opacity: .8; overflow: hidden;
-    transition: color .2s, opacity .2s, background-color .2s, transform .3s;
+    transition: color .2s, opacity .2s, background-color .2s, transform .25s;
   }
   .home-btn:hover, .home-btn:focus-visible {
     color: var(--ink); opacity: 1; background: var(--track);
     transform: translateX(-50%) translateY(-3px) scale(1.08);
   }
   .home-btn svg { display: block; width: 22px; height: 22px; }
-  .leaving .home-btn { opacity: 0; }
 
-  /* 左下角 GitHub 图标，跟「关于」对称。内联 SVG，不额外发请求 */
-  .gh-btn {
-    position: fixed; left: max(8px, env(safe-area-inset-left)); bottom: max(8px, env(safe-area-inset-bottom));
-    display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%;
-    color: var(--muted); text-decoration: none; opacity: .8; overflow: hidden;
-    transition: color .2s, opacity .2s, background-color .2s, transform .3s;
+  .about-btn {
+    position: fixed; right: max(10px, env(safe-area-inset-right)); bottom: max(10px, env(safe-area-inset-bottom));
+    z-index: 30;
+    padding: 8px 10px; border: 0; background: none; color: var(--muted);
+    font: inherit; font-size: 13px; cursor: pointer;
+    text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px;
+    transition: color .2s, text-decoration-color .2s;
   }
-  .gh-btn:hover, .gh-btn:focus-visible { color: var(--fg); opacity: 1; background: var(--track); transform: rotate(-10deg) scale(1.1); }
-  /* 图标本体撑满圆形，居中不偏 */
-  .gh-btn svg { display: block; width: 23px; height: 23px; }
+  .about-btn:hover, .about-btn:focus-visible { color: var(--fg); text-decoration-color: currentColor; }
+
+  /* 跳转/离场时三个按钮一起淡出 */
+  .hud.gone ~ .gh-btn, .hud.gone ~ .home-btn, .hud.gone ~ .about-btn { opacity: 0; }
+  .gh-btn, .home-btn, .about-btn { transition: opacity .5s, color .2s, background-color .2s, transform .25s; }
+
+  /* ---------- 关于弹窗 ---------- */
   .about {
-    width: min(360px, calc(100vw - 32px)); margin: auto; padding: 0; border: 0; border-radius: 16px;
-    background: var(--card); color: var(--fg); box-shadow: 0 18px 50px rgba(0, 0, 0, .25);
+    width: min(380px, calc(100vw - 32px)); margin: auto; padding: 0; border: 0; border-radius: 16px;
+    background: var(--card); color: var(--fg); box-shadow: 0 18px 50px rgba(0, 0, 0, .55);
     cursor: auto; user-select: text;
   }
   .about[open] { animation: rise .25s ease-out; }
-  .about::backdrop { background: rgba(8, 9, 20, .55); backdrop-filter: blur(3px); }
+  .about::backdrop { background: rgba(8, 9, 20, .62); backdrop-filter: blur(4px); }
   .about-body { padding: 24px 22px 18px; }
   .about h2 { font-size: 18px; margin-bottom: 12px; }
-  .about p { font-size: 14px; line-height: 1.7; }
+  .about p { font-size: 14px; line-height: 1.75; }
   .about p + p { margin-top: 8px; }
   .about code {
     padding: 1px 6px; border-radius: 6px; background: var(--track);
@@ -294,82 +292,125 @@
     font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
   }
 
-  .run .badge { animation: pop .7s cubic-bezier(.34, 1.56, .64, 1) backwards; }
-  .run .core { animation: breathe 1.4s ease-in-out .7s infinite; }
-  .run .copy { animation: rise .5s ease-out .15s backwards; }
-  /* 进度条独立用 .timing 类：恢复时只重置它，徽章不会跟着重播入场动画 */
-  .timing .bar { animation: fill var(--delay) linear forwards; }
-  .paused .bar { animation-play-state: paused; }
-  .leaving .wrap { transform: scale(1.18); opacity: 0; }
-  .leaving .copy { opacity: 0; transform: translateY(8px); }
-  .leaving .about-btn { opacity: 0; }
-  .leaving .gh-btn { opacity: 0; }
+  /* 只给读屏器的文字 */
+  .sr {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
 
-  @keyframes pop { from { transform: scale(.55) rotate(-25deg); opacity: 0; } }
-  @keyframes breathe { 50% { transform: scale(1.03); } }
-  @keyframes fill { to { stroke-dashoffset: 0; } }
+  /* ---------- 动画 ---------- */
+  @keyframes pulseDot { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+  @keyframes cdPulse {
+    from { transform: translate(-50%, -50%) scale(1.55); opacity: 0; }
+    to   { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  }
+  @keyframes cardIn { from { opacity: 0; transform: translateY(10px); } }
+  @keyframes quoteIn { from { opacity: 0; transform: translateY(3px); } }
+  @keyframes goBreathe {
+    0%, 100% { box-shadow: 0 0 0 1px rgba(255,255,255,.35) inset,
+                           0 10px 40px rgba(254,206,14,.45),
+                           0 0 80px rgba(254,206,14,.28); }
+    50%      { box-shadow: 0 0 0 1px rgba(255,255,255,.5) inset,
+                           0 14px 54px rgba(254,206,14,.6),
+                           0 0 120px rgba(254,206,14,.42); }
+  }
   @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
-  @keyframes dot { 0%, 100% { opacity: .25; transform: none; } 40% { opacity: 1; transform: translateY(-.25em); } }
-  /* 语录换句子时的淡入 */
-  @keyframes quoteIn { from { opacity: 0; transform: translateY(4px); } }
-  /* 被摸头时奶龙左右晃一下 */
-  @keyframes nudge { 0%, 100% { transform: none; } 30% { transform: rotate(-3deg) scale(1.03); } 65% { transform: rotate(3deg) scale(1.03); } }
 
+  /* ---------- 减少动态效果 ---------- */
   @media (prefers-reduced-motion: reduce) {
-    .run .badge, .run .core, .run .copy, .dots i, .about[open], .petting .pet-face { animation: none; }
-    .wrap, .copy, .halo, .pet-msg, .resume-msg, .gh-btn, .home-btn { transition: none; }
-    /* 动态背景全关：既省电，也尊重「减少动态效果」的系统设置 */
-    .flow i, body::before { animation: none !important; }
+    .brand .dot, .go-btn.show, .history.in, .quote.on { animation: none; }
+    #veil { transition: none; }
+  }
+
+  /* ---------- 兜底：没有 WebGL / 没有 three.js ---------- */
+  .fallback { display: none; }
+  body.no-3d .fallback { display: block; }
+  body.no-3d #scene { display: none; }
+  body.no-3d .hud {
+    pointer-events: auto;
+    background:
+      radial-gradient(1.5px 1.5px at 12% 18%, #fff, transparent),
+      radial-gradient(1.3px 1.3px at 78% 24%, #fff, transparent),
+      radial-gradient(1.4px 1.4px at 44% 72%, #dfe8ff, transparent),
+      radial-gradient(1.2px 1.2px at 88% 66%, #e6ecff, transparent),
+      radial-gradient(2px 2px at 62% 12%, #fff, transparent),
+      var(--bg);
+  }
+  body.no-3d #countdown, body.no-3d .hint { display: none; }
+  .fallback-inner {
+    margin: auto; text-align: center; padding: 0 24px;
+  }
+  .fallback-inner h1 { font-size: clamp(22px, 6vw, 30px); margin-bottom: 12px; }
+  .fallback-inner p { color: var(--muted); font-size: 14px; line-height: 1.8; margin-bottom: 22px; }
+  .fallback-inner a.go {
+    display: inline-block; padding: 14px 30px; border-radius: 999px;
+    background: var(--ink); color: #3a2c00; font-weight: 800; text-decoration: none;
+  }
+
+  /* 小屏：历史卡片更紧凑，别把屏幕占满 */
+  @media (max-height: 620px) {
+    .history { padding: 12px 16px 10px; }
+    .h-text { display: none; }
   }
 </style>
 </head>
 <body>
-<!-- 背景两层：.flow 是流动的彩色光斑，.frost 是盖在它上面的磨砂玻璃。
-     都是 aria-hidden + pointer-events:none，不参与读屏也不挡点击。 -->
-<div class="flow" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
-<div class="frost" aria-hidden="true"></div>
-<main>
-  <!-- 顶部随机语录，内容由 1.txt 提供（见底部脚本）。外面套个固定高度的槽，
-       这样「还没加载」和「加载好了」不会让页面跳一下。 -->
-  <div class="quote-slot">
+
+<!-- 3D 画布 -->
+<canvas id="scene" aria-hidden="true"></canvas>
+<div id="veil" aria-hidden="true"></div>
+
+<!-- 覆盖层 UI -->
+<div class="hud" id="hud">
+  <div class="top">
+    <div class="brand">
+      <span class="dot" aria-hidden="true"></span>
+      宇宙奶龙大学
+    </div>
     <p class="quote" id="quote" role="status" aria-live="polite" title="点一下换一句"></p>
   </div>
-  <div class="wrap">
-    <div class="badge">
-      <svg class="progress" viewBox="0 0 100 100">
-        <circle class="track" cx="50" cy="50" r="49"/>
-        <circle class="bar" cx="50" cy="50" r="49" pathLength="100"/>
-      </svg>
-      <!-- 奶龙在前、文字环在后，环才会压在它身上 -->
-      <img class="core pet-face" src="core.webp" alt="" width="720" height="720" fetchpriority="high">
-      <svg class="ring" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 720" width="720" height="720" role="img" aria-label="宇宙奶龙大学"><g font-family="Microsoft YaHei, PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="32" font-weight="800" text-anchor="middle"><g transform="rotate(0.0 360 360)"><text x="360" y="119.2" fill="#3a2c00">宇</text></g><g transform="rotate(10.2857 360 360)"><text x="360" y="119.2" fill="#3a2c00">宙</text></g><g transform="rotate(20.5714 360 360)"><text x="360" y="119.2" fill="#3a2c00">奶</text></g><g transform="rotate(30.8571 360 360)"><text x="360" y="119.2" fill="#3a2c00">龙</text></g><g transform="rotate(41.1429 360 360)"><text x="360" y="119.2" fill="#3a2c00">大</text></g><g transform="rotate(51.4286 360 360)"><text x="360" y="119.2" fill="#3a2c00">学</text></g><g transform="rotate(61.7143 360 360)"><text x="360" y="119.2" fill="#d99a00">·</text></g><g transform="rotate(72.0 360 360)"><text x="360" y="119.2" fill="#3a2c00">宇</text></g><g transform="rotate(82.2857 360 360)"><text x="360" y="119.2" fill="#3a2c00">宙</text></g><g transform="rotate(92.5714 360 360)"><text x="360" y="119.2" fill="#3a2c00">奶</text></g><g transform="rotate(102.8571 360 360)"><text x="360" y="119.2" fill="#3a2c00">龙</text></g><g transform="rotate(113.1429 360 360)"><text x="360" y="119.2" fill="#3a2c00">大</text></g><g transform="rotate(123.4286 360 360)"><text x="360" y="119.2" fill="#3a2c00">学</text></g><g transform="rotate(133.7143 360 360)"><text x="360" y="119.2" fill="#d99a00">·</text></g><g transform="rotate(144.0 360 360)"><text x="360" y="119.2" fill="#3a2c00">宇</text></g><g transform="rotate(154.2857 360 360)"><text x="360" y="119.2" fill="#3a2c00">宙</text></g><g transform="rotate(164.5714 360 360)"><text x="360" y="119.2" fill="#3a2c00">奶</text></g><g transform="rotate(174.8571 360 360)"><text x="360" y="119.2" fill="#3a2c00">龙</text></g><g transform="rotate(185.1429 360 360)"><text x="360" y="119.2" fill="#3a2c00">大</text></g><g transform="rotate(195.4286 360 360)"><text x="360" y="119.2" fill="#3a2c00">学</text></g><g transform="rotate(205.7143 360 360)"><text x="360" y="119.2" fill="#d99a00">·</text></g><g transform="rotate(216.0 360 360)"><text x="360" y="119.2" fill="#3a2c00">宇</text></g><g transform="rotate(226.2857 360 360)"><text x="360" y="119.2" fill="#3a2c00">宙</text></g><g transform="rotate(236.5714 360 360)"><text x="360" y="119.2" fill="#3a2c00">奶</text></g><g transform="rotate(246.8571 360 360)"><text x="360" y="119.2" fill="#3a2c00">龙</text></g><g transform="rotate(257.1429 360 360)"><text x="360" y="119.2" fill="#3a2c00">大</text></g><g transform="rotate(267.4286 360 360)"><text x="360" y="119.2" fill="#3a2c00">学</text></g><g transform="rotate(277.7143 360 360)"><text x="360" y="119.2" fill="#d99a00">·</text></g><g transform="rotate(288.0 360 360)"><text x="360" y="119.2" fill="#3a2c00">宇</text></g><g transform="rotate(298.2857 360 360)"><text x="360" y="119.2" fill="#3a2c00">宙</text></g><g transform="rotate(308.5714 360 360)"><text x="360" y="119.2" fill="#3a2c00">奶</text></g><g transform="rotate(318.8571 360 360)"><text x="360" y="119.2" fill="#3a2c00">龙</text></g><g transform="rotate(329.1429 360 360)"><text x="360" y="119.2" fill="#3a2c00">大</text></g><g transform="rotate(339.4286 360 360)"><text x="360" y="119.2" fill="#3a2c00">学</text></g><g transform="rotate(349.7143 360 360)"><text x="360" y="119.2" fill="#d99a00">·</text></g></g></svg>
-    </div>
-    <!-- 点奶龙会暂停倒计时（比「关于」按钮更有共鸣），热区铺满徽章 -->
-    <button class="hit" id="pet" type="button" aria-describedby="pet-msg">
-      <span class="sr">摸摸奶龙</span>
-    </button>
-    <!-- 光晕单独一层，用 overflow:hidden 裁成圆形，不糊到整页 -->
-    <span class="halo" aria-hidden="true"></span>
+
+  <div id="countdown" hidden aria-hidden="true"></div>
+
+  <!-- 底部一组：校史卡片 + 提示。
+       套一层 .bottom 用 margin-top:auto 压到底部，
+       否则校史卡片隐藏时提示会顶到标题下面去。 -->
+  <div class="bottom">
+    <section class="history" id="history" hidden aria-live="polite">
+      <div class="h-year" id="history-year"></div>
+      <div class="h-title" id="history-title"></div>
+      <p class="h-text" id="history-text"></p>
+      <div class="h-dots" id="history-dots" aria-hidden="true"></div>
+    </section>
+
+    <p class="hint" id="hint">奶龙号正在飞往广州大学星…</p>
   </div>
-  <div class="copy">
-    <h1 id="title">宇宙奶龙大学</h1>
-    <p class="status">奶龙正在护送你前往 <strong id="to">广州大学</strong><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span></p>
-    <div class="msg-slot">
-      <p class="pet-msg" id="pet-msg" role="status" aria-live="polite">
-        <b>奶龙被摸头了！</b>
-        <span>倒计时已暂停 · 再点一下重新计时</span>
-      </p>
-      <p class="resume-msg" id="resume-msg" role="status" aria-live="polite">
-        <b>出发！计时重新开始</b>
-        <span>奶龙说：这次要看完整动画哦</span>
-      </p>
+
+  <!-- 没有 WebGL 时的静态兜底 -->
+  <div class="fallback">
+    <div class="fallback-inner">
+      <h1>宇宙奶龙大学</h1>
+      <p>你的浏览器没能启用 3D 显示。<br>奶龙号已经准备好，直接出发吧。</p>
+      <a class="go" href="https://www.gzhu.edu.cn/">立即前往广州大学</a>
     </div>
-    <p class="hint" id="hint">立即前往</p>
-    <noscript><p class="hint"><a href="https://www.gzhu.edu.cn/">没有自动跳转？点这里</a></p></noscript>
   </div>
-</main>
-<!-- 正下方「回主页」入口：去 home.html（卡片导航页）。
-     和左下 GitHub、右下「关于」凑成三个角，所以放正中。 -->
+</div>
+
+<!-- 悬浮「出发」按钮：校史放映完后出现 -->
+<button class="go-btn" id="go-btn" type="button" hidden>
+  <span>出发，前往广州大学星</span>
+  <span class="arrow" aria-hidden="true">→</span>
+</button>
+
+<!-- ========== 三个原有按钮 ========== -->
+
+<!-- 左下：GitHub（内联 SVG，不额外发请求） -->
+<a class="gh-btn" href="https://github.com/Thomas455/nailong-university" target="_blank" rel="noopener"
+   aria-label="在 GitHub 上查看本站源码">
+  <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+</a>
+
+<!-- 正下：回主页（去 home.html 卡片导航页） -->
 <a class="home-btn" href="home.html" aria-label="进入奶龙主页">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -379,66 +420,69 @@
   </svg>
   <span class="sr">进入奶龙主页</span>
 </a>
-<button class="about-btn" id="about-btn" type="button" hidden>关于</button>
-<!-- 左下角 GitHub 图标（内联 SVG，不额外发请求） -->
-<a class="gh-btn" href="https://github.com/Thomas455/nailong-university" target="_blank" rel="noopener"
-   aria-label="在 GitHub 上查看本站源码">
-  <!-- GitHub mark，取自官方 simple-icons（CC0-1.0） -->
-  <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
-</a>
+
+<!-- 右下：关于 -->
+<button class="about-btn" id="about-btn" type="button">关于</button>
+
 <dialog class="about" id="about" aria-labelledby="about-title">
   <div class="about-body">
     <h2 id="about-title">关于本站</h2>
-    <p>本站为奶龙站点：打开 <code>宇宙奶龙大学.com</code>，会先加载此页面，把你送到广州大学官网。</p>
+    <p>本站为奶龙站点：打开 <code>宇宙奶龙大学.com</code>，会先看到「奶龙号」从发射台升空的动画，
+       飞到「广州大学星」时，点中间的按钮就会前往广州大学官网。</p>
     <p>本站与广州大学并无任何官方关联，域名、校徽与页面均为网友自制，仅作趣味跳转之用。</p>
     <form method="dialog"><button>知道了</button></form>
   </div>
 </dialog>
+
+<!-- Three.js：本地 vendor，不走 CDN（中文网络下 CDN 经常连不上） -->
+<script src="assets/three.min.js"></script>
+<!-- 3D 发射场景 -->
+<script src="assets/launch.js"></script>
 <script>
-(() => {
-  const TARGET = 'https://www.gzhu.edu.cn/';   // ← 要跳转的大学官网，改这里
-  const NAME   = '广州大学';                    // ← 文案里出现的校名，改这里
+(function () {
+  'use strict';
 
-  const stay = new URLSearchParams(location.search).has('stay'); // 演示用：不跳转，循环播放
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // ---- 时序常量 ----
-  // 进度条走满 = DELAY + EXIT（约 5.45 秒），之后只留 BUFFER 等最后一帧画完就跳，中间没有空档。
-  const DELAY  = reduce ? 1200 : 5000; // 入场动画 + 停留（ms）—— 进度条走完约 5 秒
-  const EXIT   = reduce ? 0   : 450;   // 离场（放大淡出）时长，和 CSS .wrap 的 transition 一致
-  const BUFFER = 80;                   // 余量：等最后一帧画完再跳
-  const TOTAL  = DELAY + EXIT;         // 进度条走满的时刻 = 跳转时刻
-  const SPIN   = 4000;                 // 文字环转一圈（ms）—— 这个保持原速，不跟背景一起加速
-  const RESUME_FLASH = 620;            // 恢复时绿色闪一下的时长
+  /* ---------- 没有 3D 能力时退回静态页面 ----------
+     三种情况都算：three.js 没加载（被拦截）、WebGL 创建失败（老设备）、
+     或者用户系统里开了「减少动态效果」。 */
+  function useFallback() {
+    document.body.classList.add('no-3d');
+    var hud = document.getElementById('hud');
+    if (hud) hud.classList.remove('gone');
+    var hist = document.getElementById('history');
+    if (hist) hist.hidden = true;
+    var cd = document.getElementById('countdown');
+    if (cd) cd.hidden = true;
+    var gb = document.getElementById('go-btn');
+    if (gb) gb.hidden = true;
+  }
 
-  const body = document.body;
-  body.style.setProperty('--delay', TOTAL + 'ms');
-  if (stay) document.getElementById('hint').textContent += '（演示模式，不会真的跳转）';
+  if (!window.NailongLaunch || window.__launchFailed) {
+    useFallback();
+  }
 
-  // ---- 顶部语录：从同目录 1.txt 随机抽一行 ----
-  // 用 fetch 而不是 XMLHttpRequest：写法短，而且 file:// 下失败会走 catch，不会弹错误。
-  // 取不到就保持空白（.quote 的高度已经占住），不影响别的元素。
-  const quoteEl = document.getElementById('quote');
-  let quoteLines = [];
+  /* ---------- 顶部语录：从同目录 1.txt 随机抽一行 ---------- */
+  // 用 fetch 而不是 XMLHttpRequest：写法短，file:// 下失败也走 catch，不弹错误。
+  var quoteEl = document.getElementById('quote');
+  var quoteLines = [];
   fetch('1.txt', { cache: 'no-cache' })
-    .then(r => (r.ok ? r.text() : Promise.reject(new Error(r.status))))
-    .then(txt => {
-      // 一行一句；去掉空行和首尾空白，顺便砍掉 BOM
-      quoteLines = txt.replace(/^\uFEFF/, '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    .then(function (r) { return r.ok ? r.text() : Promise.reject(new Error(r.status)); })
+    .then(function (txt) {
+      quoteLines = txt.replace(/^\uFEFF/, '').split(/\r?\n/).map(function (s) { return s.trim(); }).filter(Boolean);
       if (!quoteLines.length) return;
       showQuote();
-      // 每 3.5 秒自己换一句，和背景一样有「活着」的感觉
-      setInterval(showQuote, 3500);
-      quoteEl.addEventListener('click', showQuote);  // 等不及也可以手动点
+      setInterval(showQuote, 4200);
+      quoteEl.addEventListener('click', showQuote);
     })
-    .catch(() => { /* 双击本地打开、或 1.txt 不存在：安静地不显示 */ });
+    .catch(function () { /* 双击本地打开、或 1.txt 不存在：安静地不显示 */ });
 
   function showQuote() {
     if (!quoteLines.length) return;
-    // 别连着两次抽到同一句
-    let next = quoteLines[Math.floor(Math.random() * quoteLines.length)];
+    var next = quoteLines[Math.floor(Math.random() * quoteLines.length)];
     if (quoteLines.length > 1) {
-      let guard = 0;
+      var guard = 0;
       while (next === quoteEl.textContent && guard++ < 8) {
         next = quoteLines[Math.floor(Math.random() * quoteLines.length)];
       }
@@ -449,163 +493,37 @@
     quoteEl.classList.add('on');
   }
 
-  // 动画期间先把目标页面预热，避免跳过去时白屏一下
-  const prefetch = document.createElement('link');
-  prefetch.rel = 'prefetch';
-  prefetch.href = TARGET;
-  document.head.appendChild(prefetch);
+  /* ---------- 关于弹窗 ---------- */
+  var aboutBtn = document.getElementById('about-btn');
+  var about = document.getElementById('about');
 
-  const ring = reduce ? null : document.querySelector('.ring').animate(
-    [{ transform: 'rotate(0turn)' }, { transform: 'rotate(1turn)' }],
-    { duration: SPIN, iterations: Infinity }
-  );
-
-  const aboutBtn = document.getElementById('about-btn');
-  const about = document.getElementById('about');
-  aboutBtn.hidden = false; // 没有 JS 时弹窗打不开，按钮也就不显示
-
-  const petBtn = document.getElementById('pet');
-  const hintEl = document.getElementById('hint');
-  const hintIdle = hintEl.textContent;
-  let petCount = 0;   // 只用来给统计分「第几次摸」，不影响逻辑
-
-  let timer, leaving, deadline, petting, flashTimer;
-
-  function arm(ms) {
-    deadline = performance.now() + ms;
-    timer = setTimeout(() => leave('auto'), ms);
-  }
-
-  // 重新开始计时：把进度条动画从头播一遍（只影响 .timing，徽章不会重播入场）
-  function restartTiming() {
-    body.classList.remove('timing');
-    void body.offsetWidth;   // 强制回流，让动画能重新触发
-    body.classList.add('timing');
-  }
-
-  // 点奶龙：暂停。不记剩余时间 —— 下次恢复是「重新开始计时」，不是接着数
-  function pause() {
-    if (leaving || petting) return;
-    petting = true;
-    clearTimeout(timer);
-    body.classList.add('paused', 'petting');
-    hintEl.textContent = '已暂停';
-  }
-
-  // 再点一次：进度条立刻清零重来 + 绿色闪一下
-  function unpause() {
-    if (!petting || leaving) return;
-    petting = false;
-    hintEl.textContent = '重新开始计时…';
-
-    // 先重置进度条再撤 paused：反过来的话，进度条会在绿闪那 620ms 里继续走一段
-    restartTiming();
-    body.classList.remove('petting', 'paused');
-
-    body.classList.add('resuming');            // 绿光一闪
-    clearTimeout(flashTimer);
-    flashTimer = setTimeout(function () {
-      body.classList.remove('resuming');        // 闪完撤掉，回到常态
-      hintEl.textContent = hintIdle;
-      if (leaving) return;
-      arm(DELAY);                              // ← 重新计时：完整 DELAY
-    }, RESUME_FLASH);
-  }
-
-  function start() {
-    leaving = false;
-    petting = false;
-    clearTimeout(flashTimer);
-    body.classList.remove('run', 'leaving', 'paused', 'petting', 'resuming');
-    hintEl.textContent = hintIdle;
-    void body.offsetWidth; // 重新触发 CSS 动画
-    body.classList.add('run');
-    restartTiming();      // 进度条从头开始
-    if (ring) ring.playbackRate = 1;
-    arm(DELAY);
-  }
-
-  // 计时走完 → 放大淡出 → 稍等 → 真正跳转
-  function leave(reason) {
-    if (leaving) return;
-    leaving = true;
-    clearTimeout(timer);
-    // 顺手记一笔：是用户等完了（auto）还是等不及点掉的（skip）
-    window._hmt.push(['_trackEvent', 'redirect', reason === 'skip' ? 'skip' : 'auto']);
-    body.classList.add('leaving');   // 离场动画开始（缩放 + 淡出，EXIT 毫秒）
-    if (ring) { // 离场时文字环越转越快
-      const t0 = performance.now();
-      requestAnimationFrame(function speedUp(now) {
-        const k = Math.min(1, (now - t0) / EXIT);
-        ring.playbackRate = 1 + 7 * k * k;
-        if (k < 1) requestAnimationFrame(speedUp);
-      });
-    }
-    // 离场动画播完（EXIT + BUFFER）立刻跳；演示模式下原地重播
-    setTimeout(stay ? start : redirect, EXIT + BUFFER);
-  }
-
-  // 摸奶龙：第一次暂停（红），再点重新计时（绿）
-  petBtn.addEventListener('click', () => {
-    if (leaving || about.open) return;   // 弹窗开着时别响应，它在最上层
-    if (petting) { unpause(); return; }
-    pause();
-    petCount++;
-    window._hmt.push(['_trackEvent', 'pet', 'tap', String(petCount)]);
-  });
-
-  // 跳转前给统计脚本留点时间：保证「打开到跳转」至少过 BUDGET 毫秒。
-  // 等完动画的（约 5.5s）早已超过预算，不会多等；提前点掉的才补等。被拦截就一秒不等。
-  const BUDGET = 1200;
-  function redirect() {
-    const a = window.__analytics;
-    const elapsed = a ? Date.now() - a.start : Infinity;
-    if (!a || a.ready || a.failed || elapsed >= BUDGET) {
-      location.replace(TARGET);
-      return;
-    }
-    const poll = setInterval(() => {
-      const b = window.__analytics;
-      if (b.ready || b.failed || Date.now() - b.start >= BUDGET) {
-        clearInterval(poll);
-        location.replace(TARGET);
-      }
-    }, 60);
-  }
-
-  // 「关于」弹窗：打开时暂停倒计时，关闭后从剩余时间继续。
-  // 「关于」是「接着数」，摸奶龙是「重新数」，两者用不同的状态分开记。
-  let aboutLeft = 0, aboutWasPetting = false;
-  aboutBtn.addEventListener('click', () => {
-    if (leaving || about.open) return;
-    aboutWasPetting = petting;      // 本来就在摸头暂停中，关掉弹窗后要保持暂停
-    if (!petting) {
-      clearTimeout(timer);
-      aboutLeft = Math.max(0, deadline - performance.now());
-      body.classList.add('paused');
-    }
+  aboutBtn.addEventListener('click', function () {
+    if (about.open) return;
     about.showModal();
   });
-  about.addEventListener('close', () => {
-    if (aboutWasPetting) return;    // 原本就暂停着，维持原样，等用户再点一次奶龙
-    body.classList.remove('paused');
-    if (!leaving) arm(aboutLeft);
-  });
-  about.addEventListener('click', e => { if (e.target === about) about.close(); }); // 点遮罩关闭
+  // 点遮罩关闭
+  about.addEventListener('click', function (e) { if (e.target === about) about.close(); });
 
-  // 以前这里有个「点页面任何地方 / 按任意键 = 立即跳转」的全局监听，
-  // 已经移除：它会跟页面上的链接打架（点 GitHub 图标会变成跳去学校官网），
-  // 而且「点到空白处就突然跳走」本身也很突兀。现在只有倒计时结束才会跳。
-  // 想立刻走的人，点一下奶龙右侧的「立即前往」——见下面 hintEl 的处理。
-  hintEl.style.cursor = 'pointer';
-  hintEl.addEventListener('click', e => {
-    e.stopPropagation();            // 别让它冒泡到别处
-    if (!leaving) leave('skip');
-  });
-  hintEl.title = '点这里立刻前往';
+  /* ---------- 跳转前的一点统计埋点 ---------- */
+  // 旧版是靠倒计时自动跳，现在改成用户点按钮才跳。
+  // 记录「打开 → 抵达」的时长，方便知道动画会不会太长让人等不及。
+  window.__launchEvent = function (name) {
+    try {
+      window._hmt.push(['_trackEvent', 'launch', name, '1']);
+    } catch (e) { /* 统计脚本被拦就跳过 */ }
+  };
 
-  start();
+  /* ---------- 没有 JS 时也能走 ---------- */
+  // <noscript> 里给了直链，这里不再重复处理。
 })();
 </script>
+<noscript>
+  <div style="position:fixed;left:0;right:0;bottom:70px;text-align:center;z-index:40">
+    <a href="https://www.gzhu.edu.cn/"
+       style="display:inline-block;padding:12px 26px;border-radius:999px;background:#fece0e;color:#3a2c00;font-weight:800;text-decoration:none">
+      立即前往广州大学
+    </a>
+  </div>
+</noscript>
 </body>
 </html>
