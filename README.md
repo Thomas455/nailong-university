@@ -1,4 +1,4 @@
-﻿[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
+[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
 
 > **首页 3D 场景由 AI 协作开发。**
 > 发射升空、太空巡航、校史展示、拖动环视 / 轻点跳节 / 暂停这些交互，
@@ -228,8 +228,40 @@ python -m http.server 8790
 点「出发」后 → 扑向星球（`T.GLIDE`）→ 白场遮罩 → `location.replace('https://www.gzhu.edu.cn/')`。
 用 `replace` 而不是 `href`，跳过去之后按浏览器后退不会又弹回这一页。
 
-如果 three.js 加载失败或 WebGL 不可用，会自动切到 `body.no-3d` 的静态降级页
-（仍有三个导航按钮和一个直链），不会白屏。
+### 2.5.1 降级页
+
+3D 起不来的时候不能给用户看黑屏，所以有一个静态降级页。
+命中下面任意一条就会给 `<body>` 加 `no-3d` 类，CSS 立刻切过去：
+
+| 触发条件 | 位置 |
+| --- | --- |
+| `three.min.js` 没加载（被网络拦截、插件拦了） | `launch.js` 开头的 `if (!window.THREE)` |
+| 浏览器创建 WebGL 渲染器失败（老设备、关了硬件加速） | `new THREE.WebGLRenderer` 的 catch |
+| **运行中 WebGL 上下文丢失**（切后台回来、显存不足） | `webglcontextlost` 监听 |
+| 脚本执行到一半抛异常，`NailongLaunch` 没挂上 | `index.html` 的内联检查 |
+
+切过去之后：隐藏 canvas / HUD / 倒计时 / 出发按钮，显示：
+
+* 一句说明 + 「立即前往广州大学」按钮；
+* **8 条校史正文**（和 3D 场景里展示的一致）；
+* 资料来源标注。
+
+> 校史正文是后补的。原来降级页只有一句话 + 一个链接，3D 一挂就等于把
+> 8 条校史全丢了 —— 而那正是这页最有价值的内容。
+
+### 2.5.2 无障碍
+
+| 做了什么 | 为什么 |
+| --- | --- |
+| `.skip-link`「跳过动画，直接前往广州大学」 | 出发按钮要等升空完成（9.3 秒）才出现，键盘用户不该干等；Tab 聚焦时滑入 |
+| `#hist-live`（`aria-live="polite"`） | 校史画在 canvas 上，读屏完全读不到；每换一节播报「校史第 N 节，共 8 节：年份　标题」 |
+| `#hint` 加 `role="status"` | 状态文案变化（正在飞往 → 已抵达）会被播报 |
+| 方向键 ← → | 和翻页按钮等价，键盘用户不用去猜屏幕能点 |
+| `.sr-only` 正文 | 首页内容全在 canvas 里，搜索引擎和读屏都抓不到；用 clip 方式视觉隐藏一份真文本 |
+
+> ⚠️ 已知遗留：`index.html` 里有一个 `var reduce`（检测 `prefers-reduced-motion`）
+> 声明了但没被使用，注释里却写着「开了减少动态效果也算降级」。
+> 也就是说**注释和代码不一致** —— 真开了减少动态效果的用户仍会进入完整动画。
 
 ## 2.6 三个子页面
 
