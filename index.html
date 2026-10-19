@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
 <head>
 <meta name="baidu-site-verification" content="codeva-4BVXCTJLWq" />
@@ -549,6 +549,9 @@
     <!-- 校史不再是网页卡片 —— 它现在是画在 3D 星空里的发光文字
          （见 assets/launch.js 的 histSprite）。这里只留状态提示。 -->
     <p class="hint" id="hint" role="status" aria-live="polite">奶龙号正在飞往广州大学星…</p>
+    <!-- 读屏专用：校史是画在 canvas 上的，辅助技术完全读不到。
+         这里用一条 aria-live 播报「当前讲到第几节」，文字变化时会被读出来。 -->
+    <p class="sr-only" id="hist-live" role="status" aria-live="polite"></p>
     <!-- 校史翻页：给不知道「轻点屏幕能跳节」的人一个看得见的入口。
          键盘用户也能 Tab 到这里，回车触发。 -->
     <div class="hist-nav" id="hist-nav" hidden>

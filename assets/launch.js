@@ -2850,7 +2850,8 @@
     hintOrbit: document.getElementById('hint-orbit'),
     histNav: document.getElementById('hist-nav'),
     histPrev: document.getElementById('hist-prev'),
-    histNext: document.getElementById('hist-next')
+    histNext: document.getElementById('hist-next'),
+    histLive: document.getElementById('hist-live')
   };
 
   var HISTORY = [
@@ -3253,6 +3254,12 @@
   }
 
   function showHistory(i) {
+    // 读屏播报：校史画在 canvas 上，辅助技术读不到，
+    // 所以每换一节就往 aria-live 里写一句。
+    if (els.histLive) {
+      els.histLive.textContent = '校史第 ' + (i + 1) + ' 节，共 ' + HISTORY.length +
+        ' 节：' + HISTORY[i].y + '　' + HISTORY[i].t;
+    }
     var h = HISTORY[i];
     // 画到 3D 精灵上（不再用网页卡片）
     drawHistoryTexture(h, i, HISTORY.length);
