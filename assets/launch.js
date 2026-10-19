@@ -177,9 +177,21 @@
       col[i * 3 + 2] = c.b * dim;
     }
 
+    /* 闪烁用的两个属性：
+         aPhase  每颗星一个随机相位，保证它们不同步；
+         aBright 基础亮度 —— 暗星闪得浅、亮星闪得明显，才有层次。 */
+    var phase = new Float32Array(COUNT);
+    var bright = new Float32Array(COUNT);
+    for (var pi = 0; pi < COUNT; pi++) {
+      phase[pi] = Math.random() * Math.PI * 2;
+      bright[pi] = 0.55 + Math.random() * 0.45;
+    }
+
     var geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    geo.setAttribute('aPhase', new THREE.BufferAttribute(phase, 1));
+    geo.setAttribute('aBright', new THREE.BufferAttribute(bright, 1));
 
     // 圆形点精灵：默认的方形点在深色背景上很扎眼
     var tex = makeTexture(64, 64, function (g) {
@@ -190,14 +202,56 @@
       g.fillStyle = grd; g.fillRect(0, 0, 64, 64);
     });
 
-    var mat = new THREE.PointsMaterial({
-      size: 13, map: tex, vertexColors: true,
-      transparent: true, depthWrite: false, fog: false,
-      blending: THREE.AdditiveBlending, sizeAttenuation: true
+    /* 逐颗闪烁只能自己写 shader：
+       PointsMaterial 的 opacity 是全局一个值，动它等于「整个星空一起呼吸」，
+       很假。这里给每颗星一个相位，各自按不同的节奏明灭。
+
+       ⚠️ gl_PointSize 必须自己做透视衰减（uSize * uScale / -z），
+          等价于原材料的 sizeAttenuation —— 直接给固定像素的话，
+          1400~4000 单位外的星星会变成一堆大方块。 */
+    var mat = new THREE.ShaderMaterial({
+      uniforms: {
+        uMap: { value: tex },
+        uTime: { value: 0 },
+        uSize: { value: 13 },
+        uScale: { value: 400 }
+      },
+      vertexShader: [
+        'attribute float aPhase;',
+        'attribute float aBright;',
+        'attribute vec3 color;',
+        'varying vec3 vColor;',
+        'varying float vTwinkle;',
+        'uniform float uTime;',
+        'uniform float uSize;',
+        'uniform float uScale;',
+        'void main() {',
+        '  vColor = color;',
+        '  float w1 = sin(uTime * 1.70 + aPhase) * 0.5 + 0.5;',
+        '  float w2 = sin(uTime * 0.63 + aPhase * 2.3) * 0.5 + 0.5;',
+        '  vTwinkle = aBright * (0.72 + 0.28 * mix(w1, w2, 0.45));',
+        '  vec4 mv = modelViewMatrix * vec4(position, 1.0);',
+        '  gl_Position = projectionMatrix * mv;',
+        '  gl_PointSize = uSize * (uScale / -mv.z);',
+        '}'
+      ].join('\n'),
+      fragmentShader: [
+        'uniform sampler2D uMap;',
+        'varying vec3 vColor;',
+        'varying float vTwinkle;',
+        'void main() {',
+        '  vec4 t = texture2D(uMap, gl_PointCoord);',
+        '  gl_FragColor = vec4(vColor * vTwinkle, t.a);',
+        '}'
+      ].join('\n'),
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
     });
 
     var pts = new THREE.Points(geo, mat);
     pts.frustumCulled = false;
+    pts.userData.mat = mat;   // 主循环要驱动 uTime / uScale
     scene.add(pts);
     return pts;
   })();
@@ -2427,6 +2481,14 @@
     if (ctxLost) { RAF = null; return; }
     RAF = requestAnimationFrame(tick);
     var now = performance.now();
+
+    // 星空闪烁：驱动 uTime；uScale 每帧跟着画布高度走，
+    // 窗口缩放时点的大小自动正确，不用另外监听 resize。
+    var smat = starField.userData && starField.userData.mat;
+    if (smat) {
+      smat.uniforms.uTime.value = now * 0.001;
+      smat.uniforms.uScale.value = renderer.domElement.height * 0.5;
+    }
 
     if (!warmDone) {
       try { renderer.render(scene, camera); } catch (e) {}
