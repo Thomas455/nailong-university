@@ -868,6 +868,107 @@
     );
     tipCap.position.y = YTOP + NOSE_H - 0.02;
     rocket.add(tipCap);
+
+    /* ============================================================
+       细节增补
+
+       到这里火箭的大形已经有了：箭体、头锥、尾翼、喷管、管线、贴花。
+       缺的是「近距离看有没有东西」—— 真实火箭表面全是检修口、
+       排气格栅、卡箍、支架这类小件。这里补五组：
+
+         ① 检修口：箭体上一圈小矩形面板，带螺栓点
+         ② 排气格栅：级间段附近两块百叶
+         ③ 卡箍：每隔一段扣在箭体外的一圈细环
+         ④ 矢量支架：喷管两侧的作动筒
+         ⑤ 尾翼前缘：给尾翼加一条亮边，切面更清楚
+        ============================================================ */
+    var detailMat = new THREE.MeshStandardMaterial({
+      color: 0xb9c2d8, roughness: 0.42, metalness: 0.78, flatShading: true
+    });
+    var darkDetail = new THREE.MeshStandardMaterial({
+      color: 0x2a3149, roughness: 0.55, metalness: 0.7, flatShading: true
+    });
+
+    // ① 检修口：三处，避开贴花和舷窗所在的 +Z / +X 附近
+    var hatchAngles = [-1.35, -2.1, 2.55];
+    for (var hi = 0; hi < hatchAngles.length; hi++) {
+      var ha = hatchAngles[hi];
+      var hy = Y0 + BH * (0.24 + hi * 0.17);
+      var hr = radiusAt(hy) + 0.012;
+      var hatch = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.5, 0.05), detailMat);
+      hatch.position.set(Math.cos(ha) * hr, hy, Math.sin(ha) * hr);
+      hatch.rotation.y = -ha + Math.PI / 2;
+      rocket.add(hatch);
+
+      // 四个角上的螺栓
+      for (var bi = 0; bi < 4; bi++) {
+        var bx = (bi % 2 ? 1 : -1) * 0.11;
+        var by = (bi < 2 ? 1 : -1) * 0.17;
+        var bolt = new THREE.Mesh(new THREE.SphereGeometry(0.028, 6, 5), darkDetail);
+        bolt.position.set(bx, by, 0.03);
+        hatch.add(bolt);
+      }
+    }
+
+    // ② 排气格栅：级间段下方左右各一块
+    for (var gi = 0; gi < 2; gi++) {
+      var ga = gi ? Math.PI * 0.62 : -Math.PI * 0.62;
+      var gy = Y0 + BH * 0.795;
+      var gr = radiusAt(gy) + 0.02;
+      var vent = new THREE.Group();
+      vent.position.set(Math.cos(ga) * gr, gy, Math.sin(ga) * gr);
+      vent.rotation.y = -ga + Math.PI / 2;
+      for (var vi = 0; vi < 5; vi++) {
+        // 每片百叶都是倾斜的，像真的排气窗
+        var slat = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.035, 0.06), darkDetail);
+        slat.position.set(0, (vi - 2) * 0.075, 0);
+        slat.rotation.x = 0.55;
+        vent.add(slat);
+      }
+      rocket.add(vent);
+    }
+
+    // ③ 卡箍：扣在箭体外的一圈细环，位置避开装饰环和贴花
+    var clampYs = [Y0 + BH * 0.13, Y0 + BH * 0.33, Y0 + BH * 0.52, Y0 + BH * 0.71];
+    for (var ci2 = 0; ci2 < clampYs.length; ci2++) {
+      var cy = clampYs[ci2];
+      var cr = radiusAt(cy) + 0.022;
+      var clamp = new THREE.Mesh(
+        new THREE.TorusGeometry(cr, 0.028, 5, SEG * 2), detailMat
+      );
+      clamp.rotation.x = Math.PI / 2;
+      clamp.position.y = cy;
+      rocket.add(clamp);
+    }
+
+    // ④ 矢量支架：喷管两侧的作动筒（让喷管能摆动的那套东西）
+    for (var ai = 0; ai < 2; ai++) {
+      var aa = ai ? Math.PI * 0.5 : -Math.PI * 0.5;
+      var act = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.055, 0.075, 0.78, 8), detailMat
+      );
+      act.position.set(Math.cos(aa) * 1.02, 0.98, Math.sin(aa) * 1.02);
+      act.rotation.z = Math.cos(aa) * 0.30;
+      act.rotation.x = -Math.sin(aa) * 0.30;
+      rocket.add(act);
+    }
+
+    // ⑤ 尾翼前缘：沿外缘贴一条亮边，切面更清楚
+    var edgeMat = new THREE.MeshStandardMaterial({
+      color: 0xfff0a8, roughness: 0.3, metalness: 0.55,
+      emissive: 0x3a2c00, emissiveIntensity: 0.4, flatShading: true
+    });
+    for (var fi2 = 0; fi2 < 3; fi2++) {
+      var fa = (fi2 / 3) * Math.PI * 2;
+      var holder2 = new THREE.Group();
+      holder2.rotation.y = fa;
+      var edge = new THREE.Mesh(new THREE.BoxGeometry(1.46, 0.05, 0.2), edgeMat);
+      // 贴着尾翼的斜边（从 (1.88,0.48) 到 (1.64,1.72) 那一段）
+      edge.position.set(RB + 0.78, 1.62, 0);
+      edge.rotation.z = Math.atan2(1.72 - 0.48, 1.88 - 1.64) - Math.PI / 2;
+      holder2.add(edge);
+      rocket.add(holder2);
+    }
   })();
 
   /* ============================================================
