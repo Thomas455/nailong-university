@@ -522,6 +522,22 @@ body { touch-action: manipulation; }
   .about h2 { font-size: 18px; margin-bottom: 12px; }
   .about p { font-size: 14px; line-height: 1.75; }
   .about p + p { margin-top: 8px; }
+
+  /* 抖音群那一行：编号给个醒目的颜色，方便直接照着加 */
+  .about p.about-douyin {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(254, 206, 14, .10);
+    border: 1px solid rgba(254, 206, 14, .28);
+    color: rgba(255, 242, 200, .92);
+  }
+  .about p.about-douyin b {
+    color: #fece0e;
+    font-weight: 800;
+    letter-spacing: .04em;
+    user-select: all;   /* 双击能一次选中整个群号 */
+  }
   .about code {
     padding: 1px 6px; border-radius: 6px; background: var(--track);
     font: inherit; font-weight: 700; white-space: nowrap;
@@ -712,7 +728,7 @@ body { touch-action: manipulation; }
 <!-- ========== 三个原有按钮 ========== -->
 
 <!-- 左下：GitHub（内联 SVG，不额外发请求） -->
-<a class="gh-btn" href="https://github.com/Thomas455/nailong-university" target="_blank" rel="noopener"
+<a class="gh-btn" href="https://github.com/Thomas455/" target="_blank" rel="noopener"
    aria-label="在 GitHub 上查看本站源码">
   <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
 </a>
@@ -737,6 +753,7 @@ body { touch-action: manipulation; }
     <p>本站为奶龙站点：打开 <code>宇宙奶龙大学.com</code>，会先看到「奶龙号」从发射台升空的动画，
        飞到「广州大学星」时，点中间的按钮就会前往广州大学官网。</p>
     <p>本站与广州大学并无任何官方关联，域名、校徽与页面均为网友自制，仅作趣味跳转之用。</p>
+    <p class="about-douyin">欢迎加入广州大学奶家人聚集地抖音群：<b>949638315446</b></p>
     <form method="dialog"><button>知道了</button></form>
   </div>
 </dialog>
